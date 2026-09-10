@@ -1,0 +1,913 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "examples": ["John Doe", "Jane Smith"],
+      "title": "Name"
+    },
+    "headline": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "examples": ["Software Engineer", "Data Scientist", "Product Manager"],
+      "title": "Headline"
+    },
+    "location": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "examples": ["New York, NY", "London, UK", "Istanbul, Türkiye"],
+      "title": "Location"
+    },
+    "email": {
+      "default": null,
+      "description": "You can provide multiple emails as a list.",
+      "examples": [
+        "john.doe@example.com",
+        ["john.doe.1@example.com", "john.doe.2@example.com"]
+      ],
+      "title": "Email"
+    },
+    "photo": {
+      "anyOf": [
+        {
+          "format": "path",
+          "type": "string"
+        },
+        {
+          "format": "uri",
+          "maxLength": 2083,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Photo file path (relative to the YAML file) or a URL.",
+      "examples": [
+        "photo.jpg",
+        "images/profile.png",
+        "https://example.com/photo.jpg"
+      ],
+      "title": "Photo"
+    },
+    "phone": {
+      "default": null,
+      "description": "Your phone number with country code in international format (e.g., +1 for USA, +44 for UK). The display format in the output is controlled by `design.header.connections.phone_number_format`. You can provide multiple numbers as a list.",
+      "examples": ["+1-234-567-8900", ["+1-234-567-8900", "+44 20 1234 5678"]],
+      "title": "Phone"
+    },
+    "website": {
+      "default": null,
+      "description": "You can provide multiple URLs as a list.",
+      "examples": [
+        "https://johndoe.com",
+        ["https://johndoe.com", "https://www.janesmith.dev"]
+      ],
+      "title": "Website"
+    },
+    "social_networks": {
+      "anyOf": [
+        {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "network": {
+                "enum": [
+                  "LinkedIn",
+                  "GitHub",
+                  "GitLab",
+                  "IMDB",
+                  "Instagram",
+                  "ORCID",
+                  "Mastodon",
+                  "StackOverflow",
+                  "ResearchGate",
+                  "YouTube",
+                  "Google Scholar",
+                  "Telegram",
+                  "WhatsApp",
+                  "Leetcode",
+                  "X",
+                  "Bluesky",
+                  "Reddit"
+                ],
+                "type": "string"
+              },
+              "username": {
+                "examples": [
+                  "john_doe",
+                  "@johndoe@mastodon.social",
+                  "12345/john-doe"
+                ],
+                "title": "Username",
+                "type": "string"
+              }
+            },
+            "required": ["network", "username"],
+            "title": "SocialNetwork",
+            "type": "object"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Social Networks"
+    },
+    "custom_connections": {
+      "anyOf": [
+        {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "fontawesome_icon": {
+                "title": "Fontawesome Icon",
+                "type": "string"
+              },
+              "placeholder": {
+                "title": "Placeholder",
+                "type": "string"
+              },
+              "url": {
+                "anyOf": [
+                  {
+                    "format": "uri",
+                    "maxLength": 2083,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Url"
+              }
+            },
+            "required": ["fontawesome_icon", "placeholder", "url"],
+            "title": "CustomConnection",
+            "type": "object"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Additional header connections you define yourself. Each item has a `placeholder` (the displayed text), an optional `url`, and the Font Awesome icon name to render (from https://fontawesome.com/search).",
+      "examples": [
+        [
+          {
+            "fontawesome_icon": "calendar-days",
+            "placeholder": "Book a call",
+            "url": "https://cal.com/johndoe"
+          }
+        ]
+      ],
+      "title": "Custom Connections"
+    },
+    "sections": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "description": null,
+                  "properties": {
+                    "label": {
+                      "examples": [
+                        "Languages",
+                        "Citizenship",
+                        "Security Clearance"
+                      ],
+                      "title": "Label",
+                      "type": "string"
+                    },
+                    "details": {
+                      "examples": [
+                        "English (native), Spanish (fluent)",
+                        "US Citizen",
+                        "Top Secret"
+                      ],
+                      "title": "Details",
+                      "type": "string"
+                    }
+                  },
+                  "required": ["label", "details"],
+                  "title": "OneLineEntry",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "description": null,
+                  "properties": {
+                    "name": {
+                      "examples": ["Some Project", "Some Event", "Some Award"],
+                      "title": "Name",
+                      "type": "string"
+                    },
+                    "date": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "integer"
+                            },
+                            {
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "The date of this event in YYYY-MM-DD, YYYY-MM, or YYYY format, or any custom text like 'Fall 2023'. Use this for single-day or imprecise dates. For date ranges, use `start_date` and `end_date` instead.",
+                      "examples": [
+                        "2020-09-24",
+                        "2020-09",
+                        "2020",
+                        "Fall 2023",
+                        "Summer 2020"
+                      ]
+                    },
+                    "start_date": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "integer"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "The start date in YYYY-MM-DD, YYYY-MM, or YYYY format.",
+                      "examples": ["2020-09-24", "2020-09", "2020"]
+                    },
+                    "end_date": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "integer"
+                            }
+                          ]
+                        },
+                        {
+                          "const": "present",
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "The end date in YYYY-MM-DD, YYYY-MM, or YYYY format. Use \"present\" for ongoing events, or omit it to indicate the event is ongoing.",
+                      "examples": ["2024-05-20", "2024-05", "2024", "present"],
+                      "title": "End Date"
+                    },
+                    "location": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "examples": [
+                        "Istanbul, Türkiye",
+                        "New York, NY",
+                        "Remote"
+                      ],
+                      "title": "Location"
+                    },
+                    "summary": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "examples": [
+                        "Led a team of 5 engineers to develop innovative solutions.",
+                        "Completed advanced coursework in machine learning and artificial intelligence."
+                      ],
+                      "title": "Summary"
+                    },
+                    "highlights": {
+                      "anyOf": [
+                        {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Bullet points for key achievements, responsibilities, or contributions.",
+                      "examples": [
+                        [
+                          "Increased system performance by 40% through optimization.",
+                          "Mentored 3 junior developers and conducted code reviews.",
+                          "Implemented CI/CD pipeline reducing deployment time by 60%."
+                        ]
+                      ],
+                      "title": "Highlights"
+                    }
+                  },
+                  "required": ["name"],
+                  "title": "NormalEntry",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "description": null,
+                  "properties": {
+                    "company": {
+                      "examples": [
+                        "Microsoft",
+                        "Google",
+                        "Princeton Plasma Physics Laboratory"
+                      ],
+                      "title": "Company",
+                      "type": "string"
+                    },
+                    "position": {
+                      "examples": [
+                        "Software Engineer",
+                        "Research Assistant",
+                        "Project Manager"
+                      ],
+                      "title": "Position",
+                      "type": "string"
+                    },
+                    "date": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "integer"
+                            },
+                            {
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "The date of this event in YYYY-MM-DD, YYYY-MM, or YYYY format, or any custom text like 'Fall 2023'. Use this for single-day or imprecise dates. For date ranges, use `start_date` and `end_date` instead.",
+                      "examples": [
+                        "2020-09-24",
+                        "2020-09",
+                        "2020",
+                        "Fall 2023",
+                        "Summer 2020"
+                      ]
+                    },
+                    "start_date": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "integer"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "The start date in YYYY-MM-DD, YYYY-MM, or YYYY format.",
+                      "examples": ["2020-09-24", "2020-09", "2020"]
+                    },
+                    "end_date": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "integer"
+                            }
+                          ]
+                        },
+                        {
+                          "const": "present",
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "The end date in YYYY-MM-DD, YYYY-MM, or YYYY format. Use \"present\" for ongoing events, or omit it to indicate the event is ongoing.",
+                      "examples": ["2024-05-20", "2024-05", "2024", "present"],
+                      "title": "End Date"
+                    },
+                    "location": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "examples": [
+                        "Istanbul, Türkiye",
+                        "New York, NY",
+                        "Remote"
+                      ],
+                      "title": "Location"
+                    },
+                    "summary": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "examples": [
+                        "Led a team of 5 engineers to develop innovative solutions.",
+                        "Completed advanced coursework in machine learning and artificial intelligence."
+                      ],
+                      "title": "Summary"
+                    },
+                    "highlights": {
+                      "anyOf": [
+                        {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Bullet points for key achievements, responsibilities, or contributions.",
+                      "examples": [
+                        [
+                          "Increased system performance by 40% through optimization.",
+                          "Mentored 3 junior developers and conducted code reviews.",
+                          "Implemented CI/CD pipeline reducing deployment time by 60%."
+                        ]
+                      ],
+                      "title": "Highlights"
+                    }
+                  },
+                  "required": ["company", "position"],
+                  "title": "ExperienceEntry",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "description": null,
+                  "properties": {
+                    "institution": {
+                      "examples": [
+                        "Boğaziçi University",
+                        "MIT",
+                        "Harvard University"
+                      ],
+                      "title": "Institution",
+                      "type": "string"
+                    },
+                    "area": {
+                      "description": "Field of study or major.",
+                      "examples": [
+                        "Mechanical Engineering",
+                        "Computer Science",
+                        "Electrical Engineering"
+                      ],
+                      "title": "Area",
+                      "type": "string"
+                    },
+                    "degree": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "examples": ["BS", "BA", "PhD", "MS"],
+                      "title": "Degree"
+                    },
+                    "date": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "integer"
+                            },
+                            {
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "The date of this event in YYYY-MM-DD, YYYY-MM, or YYYY format, or any custom text like 'Fall 2023'. Use this for single-day or imprecise dates. For date ranges, use `start_date` and `end_date` instead.",
+                      "examples": [
+                        "2020-09-24",
+                        "2020-09",
+                        "2020",
+                        "Fall 2023",
+                        "Summer 2020"
+                      ]
+                    },
+                    "start_date": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "integer"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "The start date in YYYY-MM-DD, YYYY-MM, or YYYY format.",
+                      "examples": ["2020-09-24", "2020-09", "2020"]
+                    },
+                    "end_date": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "integer"
+                            }
+                          ]
+                        },
+                        {
+                          "const": "present",
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "The end date in YYYY-MM-DD, YYYY-MM, or YYYY format. Use \"present\" for ongoing events, or omit it to indicate the event is ongoing.",
+                      "examples": ["2024-05-20", "2024-05", "2024", "present"],
+                      "title": "End Date"
+                    },
+                    "location": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "examples": [
+                        "Istanbul, Türkiye",
+                        "New York, NY",
+                        "Remote"
+                      ],
+                      "title": "Location"
+                    },
+                    "summary": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "examples": [
+                        "Led a team of 5 engineers to develop innovative solutions.",
+                        "Completed advanced coursework in machine learning and artificial intelligence."
+                      ],
+                      "title": "Summary"
+                    },
+                    "highlights": {
+                      "anyOf": [
+                        {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Bullet points for key achievements, responsibilities, or contributions.",
+                      "examples": [
+                        [
+                          "Increased system performance by 40% through optimization.",
+                          "Mentored 3 junior developers and conducted code reviews.",
+                          "Implemented CI/CD pipeline reducing deployment time by 60%."
+                        ]
+                      ],
+                      "title": "Highlights"
+                    }
+                  },
+                  "required": ["institution", "area"],
+                  "title": "EducationEntry",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "description": null,
+                  "properties": {
+                    "title": {
+                      "examples": [
+                        "Deep Learning for Computer Vision",
+                        "Advances in Quantum Computing"
+                      ],
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "authors": {
+                      "description": "You can bold your name with **double asterisks**.",
+                      "examples": [
+                        ["John Doe", "**Jane Smith**", "Bob Johnson"]
+                      ],
+                      "items": {
+                        "type": "string"
+                      },
+                      "title": "Authors",
+                      "type": "array"
+                    },
+                    "summary": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "examples": [
+                        "This paper presents a new method for computer vision."
+                      ],
+                      "title": "Summary"
+                    },
+                    "doi": {
+                      "anyOf": [
+                        {
+                          "pattern": "\\b10\\..*",
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "The DOI (Digital Object Identifier). If provided, it will be used as the link instead of the URL.",
+                      "examples": ["10.48550/arXiv.2310.03138"],
+                      "title": "Doi"
+                    },
+                    "url": {
+                      "anyOf": [
+                        {
+                          "format": "uri",
+                          "maxLength": 2083,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "A URL link to the publication. Ignored if DOI is provided.",
+                      "title": "Url"
+                    },
+                    "journal": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "The journal, conference, or venue where it was published.",
+                      "examples": [
+                        "Nature",
+                        "IEEE Conference on Computer Vision",
+                        "arXiv preprint"
+                      ],
+                      "title": "Journal"
+                    },
+                    "date": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "integer"
+                            },
+                            {
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "The date of this event in YYYY-MM-DD, YYYY-MM, or YYYY format, or any custom text like 'Fall 2023'. Use this for single-day or imprecise dates. For date ranges, use `start_date` and `end_date` instead.",
+                      "examples": [
+                        "2020-09-24",
+                        "2020-09",
+                        "2020",
+                        "Fall 2023",
+                        "Summer 2020"
+                      ]
+                    }
+                  },
+                  "required": ["title", "authors"],
+                  "title": "PublicationEntry",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "description": null,
+                  "properties": {
+                    "bullet": {
+                      "examples": [
+                        "Python, JavaScript, C++",
+                        "Excellent communication skills"
+                      ],
+                      "title": "Bullet",
+                      "type": "string"
+                    }
+                  },
+                  "required": ["bullet"],
+                  "title": "BulletEntry",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "description": null,
+                  "properties": {
+                    "number": {
+                      "examples": [
+                        "First publication about XYZ",
+                        "Patent for ABC technology"
+                      ],
+                      "title": "Number",
+                      "type": "string"
+                    }
+                  },
+                  "required": ["number"],
+                  "title": "NumberedEntry",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "description": null,
+                  "properties": {
+                    "reversed_number": {
+                      "description": "Reverse-numbered list item. Numbering goes in reverse (5, 4, 3, 2, 1), making recent items have higher numbers.",
+                      "examples": [
+                        "Latest research paper",
+                        "Recent patent application"
+                      ],
+                      "title": "Reversed Number",
+                      "type": "string"
+                    }
+                  },
+                  "required": ["reversed_number"],
+                  "title": "ReversedNumberedEntry",
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            ]
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "The sections of your CV. Keys are section titles (e.g., Experience, Education), and values are lists of entries. Entry types are automatically detected based on their fields.",
+      "examples": [
+        {
+          "Education": "...",
+          "Experience": "...",
+          "Projects": "...",
+          "Skills": "..."
+        }
+      ],
+      "title": "Sections"
+    }
+  },
+  "title": "Cv",
+  "type": "object"
+}

@@ -10,6 +10,17 @@ export function isString(obj: any) {
   return typeof obj === "string" || obj instanceof String;
 }
 
+export function removeTrailingS(str: string) {
+  return str.substring(0, str.endsWith("s") ? str.length - 1 : undefined);
+}
+
+export function toTitleCase(str: string) {
+  return str
+    .split(" ")
+    .map((w) => w.at(0)?.toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
 export function removeQuotes(s: string) {
   return s.startsWith('"') && s.endsWith('"') ? s.slice(1, -1) : s;
 }

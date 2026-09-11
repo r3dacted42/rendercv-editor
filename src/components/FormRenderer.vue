@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import type { JSONSchema } from '@apidevtools/json-schema-ref-parser';
 import { Input } from './ui/input';
-import { Field, FieldDescription, FieldLabel, FieldSet } from './ui/field';
+import { Field, FieldLabel, FieldSet } from './ui/field';
 import { Button } from './ui/button';
-import { CheckIcon, PlusIcon, XIcon } from '@lucide/vue';
+import { CheckIcon, InfoIcon, PlusIcon, XIcon } from '@lucide/vue';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { PopoverClose } from 'reka-ui';
 import { computed, ref } from 'vue';
+import { removeTrailingS, toTitleCase } from '@/lib/utils';
+import { InputGroup, InputGroupAddon, InputGroupInput } from './ui/input-group';
 
 const data = defineModel<any>({ required: true });
 
@@ -16,10 +18,11 @@ let { schema } = defineProps<{
   schema: JSONSchema,
   onDelete?: Function,
   schemaKey?: string,
+  title?: string,
 }>();
 
-const isRequiredProp = (key: any) => schema.required && Array.isArray(schema.required)
-  && schema.required.includes(key);
+// const isRequiredProp = (key: any) => schema.required && Array.isArray(schema.required)
+//   && schema.required.includes(key);
 
 const getPropTitle = (prop: any, key: string) => prop.title as string ||
   key.split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
@@ -47,8 +50,6 @@ const getObjectOptions = (prop: any) => {
   }, null) as Array<any>;
 }
 
-const removeTrailingS = (str: string) => str.substring(0, str.endsWith("s") ? str.length - 1 : undefined);
-
 const popoverData = ref({} as any);
 
 const isPopoverDataValid = computed(() => !!popoverData.value['key'] && !!popoverData.value['type']);
@@ -74,18 +75,16 @@ const onDeleteObj = (key: string, idx: number) => {
 
 <template>
   <FieldSet class="relative">
-    <Button v-if="onDelete" @click="onDelete" variant="ghost" size="icon-xs" class="absolute top-2 right-2"
-      title="Remove Entry">
+    <Button v-if="onDelete" @click="onDelete" size="icon-xs" class="absolute rounded-full top-[-8px] right-[-8px]"
+      :title="`Remove ${title || 'Entry'}`">
       <XIcon />
     </Button>
 
     <Field v-if="schema.type === 'object'" v-for="(prop, key) in schema.properties">
-      <FieldLabel :required="isRequiredProp(key)">{{ getPropTitle(prop, key) }}</FieldLabel>
-
       <template v-if="hasType(prop, 'object')">
         <template v-if="data[key] && data[key].$schemas" v-for="(item, idx) in (data[key].$schemas as Array<any>)">
           <FormRenderer :schema="item.$schema" v-model="data[key][item.$key]" :onDelete="() => onDeleteObj(key, idx)"
-            :schemaKey="item.$key" />
+            :schemaKey="item.$key" :title="`${toTitleCase(item.$key)} Section`" />
         </template>
 
         <Popover>
@@ -95,24 +94,30 @@ const onDeleteObj = (key: string, idx: number) => {
               Add {{ removeTrailingS(getPropTitle(prop, key)) }}
             </Button>
           </PopoverTrigger>
-          <PopoverContent class="w-100 flex gap-2">
-            <Input type="text" v-model="popoverData['key']"
-              :placeholder="`${removeTrailingS(getPropTitle(prop, key))} Key`" />
-            <Select v-model="popoverData['type']">
-              <SelectTrigger>
-                <SelectValue :placeholder="`${removeTrailingS(getPropTitle(prop, key))} Type`" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem v-for="opt in getObjectOptions(prop)" :value="opt">
-                  {{ opt.items.title || "General" }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <PopoverClose as-child>
-              <Button :disabled="!isPopoverDataValid" @click="() => onSubmitNewObj(key)">
-                <CheckIcon />
-              </Button>
-            </PopoverClose>
+
+          <PopoverContent class="w-100">
+            <FieldLabel class="mb-2" v-if="(prop as any).description">
+              {{ (prop as any).description }}
+            </FieldLabel>
+            <div class="flex gap-2">
+              <Input type="text" v-model="popoverData['key']"
+                :placeholder="`${removeTrailingS(getPropTitle(prop, key))} Key`" />
+              <Select v-model="popoverData['type']">
+                <SelectTrigger>
+                  <SelectValue :placeholder="`${removeTrailingS(getPropTitle(prop, key))} Type`" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="opt in getObjectOptions(prop)" :value="opt">
+                    {{ opt.items.title || "General" }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <PopoverClose as-child>
+                <Button :disabled="!isPopoverDataValid" @click="() => onSubmitNewObj(key)">
+                  <CheckIcon />
+                </Button>
+              </PopoverClose>
+            </div>
           </PopoverContent>
         </Popover>
       </template>
@@ -120,13 +125,21 @@ const onDeleteObj = (key: string, idx: number) => {
       <template v-else-if="hasType(prop, 'array')">
         <template v-for="(_item, idx) in (data[key] as Array<any>)">
           <FormRenderer :schema="getArrayItems(prop)" v-model="data[key][idx]"
-            :onDelete="() => (data[key] as Array<any>).splice(idx, 1)" />
+            :onDelete="() => (data[key] as Array<any>).splice(idx, 1)"
+            :title="`${removeTrailingS(getPropTitle(prop, key))}`" />
         </template>
 
-        <Button @click="() => addArrayItem(prop, key)">
-          <PlusIcon />
-          Add {{ removeTrailingS(getPropTitle(prop, key)) }}
-        </Button>
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <Button @click="() => addArrayItem(prop, key)">
+              <PlusIcon />
+              Add {{ removeTrailingS(getPropTitle(prop, key)) }}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent v-if="(prop as any).description" class="flex flex-col max-w-[300px]">
+            {{ (prop as any).description }}
+          </TooltipContent>
+        </Tooltip>
       </template>
 
       <template v-else-if="(prop as any).enum">
@@ -141,21 +154,24 @@ const onDeleteObj = (key: string, idx: number) => {
       </template>
 
       <template v-else>
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <Input type="text" v-model="data[key]" :placeholder="getPropTitle(prop, key)" />
-          </TooltipTrigger>
-          <TooltipContent v-if="(prop as any).examples && Array.isArray((prop as any).examples)">
-            <span class="font-bold">Examples:</span><br>
-            <span v-html="((prop as any).examples as Array<string>)
-              .reduce((acc, ex) => acc ? `${acc}<br>${ex}` : ex, '')"></span>
-          </TooltipContent>
-        </Tooltip>
+        <InputGroup>
+          <InputGroupInput type="text" v-model="data[key]" :placeholder="getPropTitle(prop, key)" />
+          <InputGroupAddon v-if="(prop as any).description || (prop as any).examples" align="inline-end">
+            <Tooltip>
+              <TooltipTrigger as-child>
+                <InfoIcon />
+              </TooltipTrigger>
+              <TooltipContent v-if="(prop as any).examples && Array.isArray((prop as any).examples)"
+                class="flex flex-col max-w-[300px]">
+                <span v-if="(prop as any).description">{{ (prop as any).description }}</span>
+                <span class="font-bold">Examples:</span>
+                <span v-html="((prop as any).examples as Array<string>)
+                  .reduce((acc, ex) => acc ? `${acc}<br>${ex}` : ex, '')"></span>
+              </TooltipContent>
+            </Tooltip>
+          </InputGroupAddon>
+        </InputGroup>
       </template>
-
-      <FieldDescription v-if="(prop as any).description">
-        {{ (prop as any).description }}
-      </FieldDescription>
     </Field>
 
     <template v-else-if="schema.type === 'array'">
@@ -163,7 +179,8 @@ const onDeleteObj = (key: string, idx: number) => {
 
       <template v-for="(_item, idx) in (data as Array<any>)">
         <FormRenderer :schema="schema.items as any" v-model="data[idx]"
-          :onDelete="() => (data as Array<any>).splice(idx, 1)" />
+          :onDelete="() => (data as Array<any>).splice(idx, 1)"
+          :title="removeTrailingS(getPropTitle({}, schemaKey || 'entry'))" />
       </template>
 
       <Button @click="data.push((schema.items as any).type === 'object' ? {} : '')">
@@ -174,8 +191,7 @@ const onDeleteObj = (key: string, idx: number) => {
 
     <template v-else-if="schema.type === 'string'">
       <Field>
-        <FieldLabel>{{ getPropTitle({}, schemaKey || "entry") }}</FieldLabel>
-        <Input type="text" v-model="data" :placeholder="getPropTitle({}, schemaKey || 'entry')" />
+        <Input type="text" v-model="data" :placeholder="getPropTitle({}, title || schemaKey || 'entry')" />
       </Field>
     </template>
   </FieldSet>

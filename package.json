@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "^16.0.2",
-    "@lucide/vue": "^1.43.0",
+    "@lucide/vue": "^1.45.0",
     "@tailwindcss/vite": "^4.3.3",
     "@vueuse/core": "^14.4.0",
     "buffer": "^6.0.3",

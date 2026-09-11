@@ -142,7 +142,7 @@ const onDeleteObj = (key: string, idx: number) => {
               Add {{ removeTrailingS(getPropTitle(prop, key)) }}
             </Button>
           </TooltipTrigger>
-          <TooltipContent v-if="(prop as any).description" class="flex flex-col max-w-[300px]">
+          <TooltipContent v-if="(prop as any).description" class="flex flex-col max-w-[450px]">
             {{ (prop as any).description }}
           </TooltipContent>
         </Tooltip>
@@ -168,7 +168,7 @@ const onDeleteObj = (key: string, idx: number) => {
                 <InfoIcon />
               </TooltipTrigger>
               <TooltipContent v-if="(prop as any).examples && Array.isArray((prop as any).examples)"
-                class="flex flex-col max-w-[300px]">
+                class="flex flex-col max-w-[450px]">
                 <span v-if="(prop as any).description">{{ (prop as any).description }}</span>
                 <span class="font-bold">Examples:</span>
                 <span v-html="((prop as any).examples as Array<string>)

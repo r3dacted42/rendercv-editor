@@ -5,7 +5,6 @@ import FormRenderer from './components/FormRenderer.vue';
 import { $RefParser, type JSONSchema } from "@apidevtools/json-schema-ref-parser";
 import { Buffer } from 'buffer';
 import { TooltipProvider } from './components/ui/tooltip/index.ts';
-import { JSONtoYAML, YAMLtoJSON } from './lib/converters.ts';
 import { matchSchema } from './lib/utils.ts';
 import DropZone from './components/DropZone.vue';
 import { Toaster } from './components/ui/sonner/index.ts';
@@ -13,6 +12,7 @@ import { toast } from 'vue-sonner';
 import { Button } from './components/ui/button/index.ts';
 import { ButtonGroup } from './components/ui/button-group/index.ts';
 import { ClipboardCopy, Trash } from '@lucide/vue';
+import { parse, stringify } from 'yaml';
 
 const SCHEMA_URL = "https://raw.githubusercontent.com/rendercv/rendercv/refs/tags/v2.8/schema.json";
 
@@ -35,15 +35,14 @@ onMounted(async () => {
 
 const onDrop = (yamlContents: string) => {
   try {
-    const convJson = YAMLtoJSON(yamlContents);
+    const convJson = parse(yamlContents);
     convJson.cv.sections.$schemas = Object.entries(convJson.cv.sections).map(([key, obj]) => ({
       $key: key, $schema: matchSchema(obj, (cvSchema.value?.properties as any).sections)
     }));
     data.value = convJson.cv;
     toast.success("YAML loaded");
-  } catch {
-    console.warn("dropped file is not valid YAML");
-    toast.error("Error while parsing YAML");
+  } catch (e: any) {
+    toast.error("Error while parsing YAML:", e);
   }
 }
 
@@ -53,7 +52,9 @@ const onClear = () => {
 }
 
 const onCopy = () => {
-  navigator.clipboard.writeText(JSONtoYAML({ cv: data.value }))
+  const _data = JSON.parse(JSON.stringify(data.value,
+    (k, v) => (!v || k === '$schemas' || (Array.isArray(v) && v.length === 0)) ? undefined : v));
+  navigator.clipboard.writeText(stringify({ cv: _data }))
     .then(() => toast.success("YAML copied to clipboard"))
     .catch(() => toast.error("Could not update clipboard"));
 }

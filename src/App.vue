@@ -5,7 +5,9 @@ import FormRenderer from './components/FormRenderer.vue';
 import { $RefParser, type JSONSchema } from "@apidevtools/json-schema-ref-parser";
 import { Buffer } from 'buffer';
 import { TooltipProvider } from './components/ui/tooltip/index.ts';
-import { JSONtoYAML } from './lib/converters.ts';
+import { JSONtoYAML, YAMLtoJSON } from './lib/converters.ts';
+import { matchSchema } from './lib/utils.ts';
+import DropZone from './components/DropZone.vue';
 
 const SCHEMA_URL = "https://raw.githubusercontent.com/rendercv/rendercv/refs/tags/v2.8/schema.json";
 
@@ -26,17 +28,33 @@ onMounted(async () => {
   cvSchema.value = (resolved as any).$defs.Cv;
 });
 
+const onDrop = (yamlContents: string) => {
+  try {
+    const convJson = YAMLtoJSON(yamlContents);
+    convJson.cv.sections.$schemas = Object.entries(convJson.cv.sections).map(([key, obj]) => ({
+      $key: key, $schema: matchSchema(obj, (cvSchema.value?.properties as any).sections)
+    }));
+    data.value = convJson.cv;
+  } catch {
+    console.warn("dropped file is not valid YAML");
+  }
+}
+
 const debug = computed(() => JSONtoYAML({ cv: data.value }));
 </script>
 
 <template>
-  <pre class="absolute overflow-clip" style="color: #fff3;">{{ debug }}</pre>
+  <pre class="absolute" style="color: #fff3; transform-origin: 0 0; transform: scale(0);">{{ debug }}</pre>
   <TooltipProvider>
-    <div class="max-w-lg mx-auto">
+    <div class="max-w-xl mx-auto">
       <h1 class="scroll-m-20 text-center text-4xl font-bold tracking-tight text-balance mb-2">
         RenderCV Editor
       </h1>
-      <FormRenderer v-if="cvSchema" :schema="cvSchema" v-model="data" />
+      <template v-if="cvSchema">
+        <DropZone @file-drop="onDrop">
+          <FormRenderer :schema="cvSchema" v-model="data" />
+        </DropZone>
+      </template>
       <template v-else-if="schema && !cvSchema">
         <p>resolving references in schema...</p>
       </template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useLocalStorage } from '@vueuse/core';
 import FormRenderer from './components/FormRenderer.vue';
 import { $RefParser, type JSONSchema } from "@apidevtools/json-schema-ref-parser";
@@ -8,6 +8,11 @@ import { TooltipProvider } from './components/ui/tooltip/index.ts';
 import { JSONtoYAML, YAMLtoJSON } from './lib/converters.ts';
 import { matchSchema } from './lib/utils.ts';
 import DropZone from './components/DropZone.vue';
+import { Toaster } from './components/ui/sonner/index.ts';
+import { toast } from 'vue-sonner';
+import { Button } from './components/ui/button/index.ts';
+import { ButtonGroup } from './components/ui/button-group/index.ts';
+import { ClipboardCopy, Trash } from '@lucide/vue';
 
 const SCHEMA_URL = "https://raw.githubusercontent.com/rendercv/rendercv/refs/tags/v2.8/schema.json";
 
@@ -35,22 +40,40 @@ const onDrop = (yamlContents: string) => {
       $key: key, $schema: matchSchema(obj, (cvSchema.value?.properties as any).sections)
     }));
     data.value = convJson.cv;
+    toast.success("YAML loaded");
   } catch {
     console.warn("dropped file is not valid YAML");
+    toast.error("Error while parsing YAML");
   }
 }
 
-const debug = computed(() => JSONtoYAML({ cv: data.value }));
+const onClear = () => {
+  data.value = {};
+  toast.success("Form cleared");
+}
+
+const onCopy = () => {
+  navigator.clipboard.writeText(JSONtoYAML({ cv: data.value }))
+    .then(() => toast.success("YAML copied to clipboard"))
+    .catch(() => toast.error("Could not update clipboard"));
+}
 </script>
 
 <template>
-  <pre class="absolute" style="color: #fff3; transform-origin: 0 0; transform: scale(0);">{{ debug }}</pre>
   <TooltipProvider>
-    <div class="max-w-xl mx-auto">
-      <h1 class="scroll-m-20 text-center text-4xl font-bold tracking-tight text-balance mb-2">
+    <div class="max-w-2xl mx-auto flex flex-col gap-2">
+      <h1 class="scroll-m-20 text-center text-4xl font-bold tracking-tight text-balance">
         RenderCV Editor
       </h1>
       <template v-if="cvSchema">
+        <ButtonGroup class="flex flex-row gap-2 self-center">
+          <Button @click="onCopy">
+            <ClipboardCopy /> Copy YAML
+          </Button>
+          <Button variant="secondary" @click="onClear">
+            <Trash /> Clear Form
+          </Button>
+        </ButtonGroup>
         <DropZone @file-drop="onDrop">
           <FormRenderer :schema="cvSchema" v-model="data" />
         </DropZone>
@@ -63,4 +86,5 @@ const debug = computed(() => JSONtoYAML({ cv: data.value }));
       </template>
     </div>
   </TooltipProvider>
+  <Toaster position="top-right" />
 </template>

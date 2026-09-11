@@ -3,7 +3,7 @@ import type { JSONSchema } from '@apidevtools/json-schema-ref-parser';
 import { Input } from './ui/input';
 import { Field, FieldLabel, FieldSet } from './ui/field';
 import { Button } from './ui/button';
-import { CheckIcon, InfoIcon, PlusIcon, XIcon } from '@lucide/vue';
+import { CheckIcon, InfoIcon, MinusIcon, PlusIcon } from '@lucide/vue';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -74,11 +74,17 @@ const onDeleteObj = (key: string, idx: number) => {
 </script>
 
 <template>
-  <FieldSet class="relative">
-    <Button v-if="onDelete" @click="onDelete" size="icon-xs" class="absolute rounded-full top-[-8px] right-[-8px]"
-      :title="`Remove ${title || 'Entry'}`">
-      <XIcon />
-    </Button>
+  <FieldSet class="border p-2 gap-2">
+    <div class="flex flex-row justify-between">
+      <FieldLabel v-if="onDelete">
+        {{ getPropTitle({}, title || schemaKey || "entry") }}
+      </FieldLabel>
+
+      <Button v-if="onDelete" size="xs" variant="secondary" @click="onDelete">
+        <MinusIcon />
+        Remove {{ title || 'Entry' }}
+      </Button>
+    </div>
 
     <Field v-if="schema.type === 'object'" v-for="(prop, key) in schema.properties">
       <template v-if="hasType(prop, 'object')">
@@ -175,8 +181,6 @@ const onDeleteObj = (key: string, idx: number) => {
     </Field>
 
     <template v-else-if="schema.type === 'array'">
-      <FieldLabel>{{ getPropTitle({}, schemaKey || "entry") }}</FieldLabel>
-
       <template v-for="(_item, idx) in (data as Array<any>)">
         <FormRenderer :schema="schema.items as any" v-model="data[idx]"
           :onDelete="() => (data as Array<any>).splice(idx, 1)"

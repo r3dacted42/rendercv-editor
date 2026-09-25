@@ -6,10 +6,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function isString(obj: any) {
-  return typeof obj === "string" || obj instanceof String;
-}
-
 export function removeTrailingS(str: string) {
   return str.substring(0, str.endsWith("s") ? str.length - 1 : undefined);
 }
@@ -19,10 +15,6 @@ export function toTitleCase(str: string) {
     .split(" ")
     .map((w) => w.at(0)?.toUpperCase() + w.slice(1))
     .join(" ");
-}
-
-export function removeQuotes(s: string) {
-  return s.startsWith('"') && s.endsWith('"') ? s.slice(1, -1) : s;
 }
 
 export function matchSchema(obj: any, sectionsSchema: any) {
@@ -41,4 +33,27 @@ export function matchSchema(obj: any, sectionsSchema: any) {
   }
   matches.sort((a, b) => a[0] - b[0]);
   return matches.at(-1)![1];
+}
+
+export function cleanData(data: any): any {
+  if (Array.isArray(data)) {
+    // Clean children, then filter out the empty primitives
+    const arr = data
+      .map(cleanData)
+      .filter((v) => v !== undefined && v !== null && v !== "");
+    return arr.length === 0 ? undefined : arr;
+  }
+  if (data !== null && typeof data === "object") {
+    const obj: any = {};
+    for (const [k, v] of Object.entries(data)) {
+      if (k === "$schemas") continue;
+
+      const cleaned = cleanData(v);
+      if (cleaned !== undefined && cleaned !== null && cleaned !== "") {
+        obj[k] = cleaned;
+      }
+    }
+    return Object.keys(obj).length === 0 ? undefined : obj;
+  }
+  return data;
 }

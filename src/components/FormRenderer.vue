@@ -17,12 +17,12 @@ const data = defineModel<any>({ required: true });
 let { schema } = defineProps<{
   schema: JSONSchema,
   onDelete?: Function,
-  schemaKey?: string,
+  userDefKey?: string,
   title?: string,
 }>();
 
-// const isRequiredProp = (key: any) => schema.required && Array.isArray(schema.required)
-//   && schema.required.includes(key);
+const isRequiredProp = (key: any) => schema.required && Array.isArray(schema.required)
+  && schema.required.includes(key);
 
 const getPropTitle = (prop: any, key: string) => prop.title as string ||
   key.split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
@@ -77,7 +77,7 @@ const onDeleteObj = (key: string, idx: number) => {
   <FieldSet class="border p-2 gap-2">
     <div class="flex flex-row justify-between">
       <FieldLabel v-if="onDelete">
-        {{ getPropTitle({}, title || schemaKey || "entry") }}
+        {{ getPropTitle({}, title || userDefKey || "entry") }}
       </FieldLabel>
 
       <Button v-if="onDelete" size="xs" variant="secondary" @click="onDelete">
@@ -90,7 +90,7 @@ const onDeleteObj = (key: string, idx: number) => {
       <template v-if="hasType(prop, 'object')">
         <template v-if="data[key] && data[key].$schemas" v-for="(item, idx) in (data[key].$schemas as Array<any>)">
           <FormRenderer :schema="item.$schema" v-model="data[key][item.$key]" :onDelete="() => onDeleteObj(key, idx)"
-            :schemaKey="item.$key" :title="`${toTitleCase(item.$key)} Section`" />
+            :userDefKey="item.$key" :title="`${toTitleCase(item.$key)} Section`" />
         </template>
 
         <Popover>
@@ -161,7 +161,8 @@ const onDeleteObj = (key: string, idx: number) => {
 
       <template v-else>
         <InputGroup>
-          <InputGroupInput type="text" v-model="data[key]" :placeholder="getPropTitle(prop, key)" />
+          <InputGroupInput type="text" v-model="data[key]" :required="isRequiredProp(key)"
+            :placeholder="getPropTitle(prop, key)" />
           <InputGroupAddon v-if="(prop as any).description || (prop as any).examples" align="inline-end">
             <Tooltip>
               <TooltipTrigger as-child>
@@ -184,18 +185,18 @@ const onDeleteObj = (key: string, idx: number) => {
       <template v-for="(_item, idx) in (data as Array<any>)">
         <FormRenderer :schema="schema.items as any" v-model="data[idx]"
           :onDelete="() => (data as Array<any>).splice(idx, 1)"
-          :title="removeTrailingS(getPropTitle({}, schemaKey || 'entry'))" />
+          :title="removeTrailingS(getPropTitle({}, userDefKey || 'entry'))" />
       </template>
 
       <Button @click="data.push((schema.items as any).type === 'object' ? {} : '')">
         <PlusIcon />
-        Add {{ removeTrailingS(getPropTitle({}, schemaKey || "entry")) }}
+        Add {{ removeTrailingS(getPropTitle({}, userDefKey || "entry")) }}
       </Button>
     </template>
 
     <template v-else-if="schema.type === 'string'">
       <Field>
-        <Input type="text" v-model="data" :placeholder="getPropTitle({}, title || schemaKey || 'entry')" />
+        <Input type="text" v-model="data" :placeholder="getPropTitle({}, title || userDefKey || 'entry')" />
       </Field>
     </template>
   </FieldSet>

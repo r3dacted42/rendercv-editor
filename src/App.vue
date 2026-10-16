@@ -18,6 +18,7 @@ import { parse, stringify } from 'yaml';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './components/ui/dialog/index.ts';
 import { provideCollapsibleState } from './composables/useCollapsibleState.ts';
 import { provideValidationState } from './composables/useValidationState.ts';
+import { provideFieldVisibility } from './composables/useFieldVisibility.ts';
 
 const SCHEMA_URL = "https://raw.githubusercontent.com/rendercv/rendercv/refs/tags/v2.8/schema.json";
 
@@ -28,6 +29,7 @@ const data = useLocalStorage("rendercv-draft", {} as any);
 
 const collapse = provideCollapsibleState();
 const validation = provideValidationState();
+const visibility = provideFieldVisibility();
 
 /** Header shadow --------------------------------------------------------- */
 const { y } = useWindowScroll();
@@ -76,6 +78,7 @@ const onCopy = async () => {
 
 const onClear = () => {
   data.value = {};
+  visibility.reset();
   toast.success("Form cleared");
 }
 </script>

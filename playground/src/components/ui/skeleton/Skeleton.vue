@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { HTMLAttributes } from 'vue'
-import { cn } from '@/lib/utils'
+import { cn } from '@r3dacted42/rendercv-form'
 
 interface SkeletonProps {
   class?: HTMLAttributes['class']

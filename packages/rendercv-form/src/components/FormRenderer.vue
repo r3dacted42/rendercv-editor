@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { JSONSchema } from '@apidevtools/json-schema-ref-parser';
+import type { FormRendererUi, JsonSchema } from '../lib/types';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Field, FieldError, FieldLabel, FieldSet } from './ui/field';
@@ -12,15 +12,15 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { PopoverClose } from 'reka-ui';
 import { computed, onScopeDispose, reactive, ref, watchEffect } from 'vue';
-import { removeTrailingS, toTitleCase } from '@/lib/utils';
+import { cleanData, cn, removeTrailingS, toTitleCase } from '@/lib/utils';
 import { isMultiline } from '@/lib/fieldHints';
 import { findExclusiveGroups, isOptional, type ExclusiveGroup } from '@/lib/fieldPolicy';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput, InputGroupTextarea } from './ui/input-group';
 import { ButtonGroup } from './ui/button-group';
 import ConfirmDialog from './ConfirmDialog.vue';
 import { useCollapsible, useCollapsibleStore } from '@/composables/useCollapsibleState';
-import { useValidationState } from '@/composables/useValidationState';
-import { useFieldVisibility, type ExclusiveMode } from '@/composables/useFieldVisibility';
+import { useOrProvideFormState } from '@/composables/useFormState';
+import type { ExclusiveMode } from '@/composables/useFieldVisibility';
 
 const data = defineModel<any>({ required: true });
 
@@ -33,8 +33,11 @@ let {
   variant = 'group',
   root = false,
   coreFields,
+  storageKey,
+  persist,
+  ui,
 } = defineProps<{
-  schema: JSONSchema,
+  schema: JsonSchema,
   onDelete?: Function,
   userDefKey?: string,
   title?: string,
@@ -46,10 +49,26 @@ let {
   root?: boolean,
   /** Optional fields rendered at the root by default (the CV header fields). */
   coreFields?: string[],
+  /**
+   * Namespace for the persisted UI state. Only used when this renderer owns the
+   * state (i.e. no ancestor called `provideFormState`/`provideCollapsibleState`).
+   */
+  storageKey?: string,
+  /** Persist collapse/disclosure to localStorage. Only used when this renderer owns the state. */
+  persist?: boolean,
+  /** Extra classes for named regions (see `FormRendererUi`). */
+  ui?: FormRendererUi,
 }>();
 
-const validation = useValidationState();
-const visibility = useFieldVisibility();
+/**
+ * UI state (collapse, validation, disclosure) is shared through provide/inject.
+ * `useOrProvideFormState` reuses an ancestor's state when there is one — so a
+ * lone renderer is self-contained, while an app can share one state (and one
+ * "collapse all") across several renderers via `provideFormState`.
+ */
+const form = useOrProvideFormState({ storageKey, persist });
+const validation = form.validation;
+const visibility = form.visibility;
 
 /* Discriminated unions (themes, locales) ---------------------------------- */
 
@@ -443,12 +462,33 @@ const groupHeaderFor = computed<Record<string, ExclusiveGroup>>(() => {
   }
   return headers;
 });
+
+/* Public control surface -------------------------------------------------- */
+
+/**
+ * Imperative controls exposed on the component instance (template `ref`):
+ *  - `validate()` — reveal errors, resolve `true` when the form is valid
+ *  - `expandAll()` / `collapseAll()`
+ *  - `reset()` — reset disclosure + validation UI state (does not touch your data)
+ *  - `output` — the cleaned value (internal `$schemas` markers removed)
+ *
+ * These operate on the shared form state, so calling them on any renderer
+ * affects every renderer that shares the same state.
+ */
+defineExpose({
+  validate: form.validate,
+  expandAll: form.expandAll,
+  collapseAll: form.collapseAll,
+  reset: form.reset,
+  output: computed(() => cleanData(data.value)),
+});
 </script>
 
 <template>
-  <FieldSet :class="isItem ? 'border-0 p-0 gap-2' : 'border p-2 gap-2'">
+  <FieldSet :class="cn(isItem ? 'border-0 p-0 gap-2' : 'border p-2 gap-2', ui?.root)">
     <Collapsible :open="isItem || open" @update:open="onOpenChange" class="flex flex-col gap-2">
-      <div v-if="!isItem && (hasHeader || onDelete)" class="flex flex-row items-center justify-between gap-2">
+      <div v-if="!isItem && (hasHeader || onDelete)" class="flex flex-row items-center justify-between gap-2"
+        :class="ui?.header">
         <CollapsibleTrigger v-if="hasHeader" as-child>
           <Button variant="ghost" size="sm" class="min-w-0 flex-1 justify-start font-medium">
             <ChevronRightIcon class="shrink-0 transition-transform duration-200 ease-out"
@@ -471,7 +511,7 @@ const groupHeaderFor = computed<Record<string, ExclusiveGroup>>(() => {
       </div>
 
       <CollapsibleContent>
-        <div class="flex flex-col gap-2">
+        <div class="flex flex-col gap-2" :class="ui?.content">
           <!-- Discriminated union selector (theme / language). -->
           <div v-if="union" class="flex flex-col gap-1">
             <FieldLabel>{{ getPropTitle({}, union.propertyName) }}</FieldLabel>
@@ -490,7 +530,8 @@ const groupHeaderFor = computed<Record<string, ExclusiveGroup>>(() => {
           <template v-if="currentSchema.type === 'object'">
             <template v-for="([key, prop]) in visibleProperties" :key="key">
               <!-- Root optionals sit above Sections so a long import can't bury them. -->
-              <div v-if="isRoot && key === 'sections' && hasHiddenFields" class="flex flex-wrap gap-1">
+              <div v-if="isRoot && key === 'sections' && hasHiddenFields" class="flex flex-wrap gap-1"
+                :class="ui?.chips">
                 <Button v-for="group in hiddenGroups" :key="group.label" type="button" size="xs" variant="outline"
                   class="text-muted-foreground" @click="() => revealGroup(group)">
                   <PlusIcon />
@@ -731,7 +772,8 @@ const groupHeaderFor = computed<Record<string, ExclusiveGroup>>(() => {
             </template>
 
             <!-- Entry optionals are offered at the end of the group. -->
-            <div v-if="hasHiddenFields && (!isRoot || !hasSectionsKey)" class="flex flex-wrap gap-1">
+            <div v-if="hasHiddenFields && (!isRoot || !hasSectionsKey)" class="flex flex-wrap gap-1"
+              :class="ui?.chips">
               <Button v-for="group in hiddenGroups" :key="group.label" type="button" size="xs" variant="outline"
                 class="text-muted-foreground" @click="() => revealGroup(group)">
                 <PlusIcon />

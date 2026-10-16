@@ -1,5 +1,5 @@
-import type { InjectionKey } from 'vue';
-import { inject, provide } from 'vue';
+import type { InjectionKey, Ref } from 'vue';
+import { inject, provide, ref } from 'vue';
 import { useLocalStorage } from '@vueuse/core';
 
 /**
@@ -28,24 +28,36 @@ export interface FieldVisibilityStore {
   reset: () => void;
 }
 
+export interface FieldVisibilityOptions {
+  /** localStorage key. Defaults to `rendercv-field-visibility`. */
+  storageKey?: string;
+  /** Persist to localStorage (default `true`). When `false`, state lives in memory only. */
+  persist?: boolean;
+}
+
 const FIELD_VISIBILITY_KEY: InjectionKey<FieldVisibilityStore> = Symbol('field-visibility');
 
 const emptyState = (): PersistedFieldVisibility => ({ revealed: {}, modes: {} });
 
-/** Creates the shared visibility store. Must be called from a `setup`. */
-export function provideFieldVisibility(storageKey = 'rendercv-field-visibility'): FieldVisibilityStore {
-  const state = useLocalStorage<PersistedFieldVisibility>(storageKey, emptyState());
+function isState(value: unknown): value is PersistedFieldVisibility {
+  const state = value as PersistedFieldVisibility;
+  return !!state
+    && typeof state.revealed === 'object' && state.revealed !== null
+    && typeof state.modes === 'object' && state.modes !== null;
+}
+
+/** Creates a visibility store. Must be called from a `setup` when persisting. */
+export function createFieldVisibility(options: FieldVisibilityOptions = {}): FieldVisibilityStore {
+  const { storageKey = 'rendercv-field-visibility', persist = true } = options;
+
+  const state: Ref<PersistedFieldVisibility> = persist
+    ? useLocalStorage<PersistedFieldVisibility>(storageKey, emptyState())
+    : ref(emptyState());
 
   // Guard against stale or incompatible values from earlier versions.
-  if (
-    !state.value
-    || typeof state.value.revealed !== 'object' || state.value.revealed === null
-    || typeof state.value.modes !== 'object' || state.value.modes === null
-  ) {
-    state.value = emptyState();
-  }
+  if (!isState(state.value)) state.value = emptyState();
 
-  const store: FieldVisibilityStore = {
+  return {
     isRevealed: (key) => state.value.revealed[key] === true,
     setRevealed: (key, revealed) => {
       const next = { ...state.value.revealed };
@@ -61,13 +73,26 @@ export function provideFieldVisibility(storageKey = 'rendercv-field-visibility')
       state.value = emptyState();
     },
   };
+}
 
+/** Creates and provides the visibility store. Must be called from a `setup`. */
+export function provideFieldVisibility(options: FieldVisibilityOptions = {}): FieldVisibilityStore {
+  const store = createFieldVisibility(options);
   provide(FIELD_VISIBILITY_KEY, store);
   return store;
 }
 
+/** The nearest provided visibility store, if any (does not throw). */
+export function injectFieldVisibility(): FieldVisibilityStore | undefined {
+  return inject(FIELD_VISIBILITY_KEY, undefined);
+}
+
+/**
+ * The nearest provided visibility store.
+ * Throws when no ancestor called `provideFieldVisibility`.
+ */
 export function useFieldVisibility(): FieldVisibilityStore {
-  const store = inject(FIELD_VISIBILITY_KEY);
+  const store = injectFieldVisibility();
   if (!store) throw new Error('useFieldVisibility() must be used inside a component that called provideFieldVisibility()');
   return store;
 }

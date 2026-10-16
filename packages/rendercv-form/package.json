@@ -1,0 +1,93 @@
+{
+  "name": "@r3dacted42/rendercv-form",
+  "version": "0.1.0",
+  "description": "Schema-driven Vue 3 form renderer for RenderCV YAML documents",
+  "type": "module",
+  "license": "MIT",
+  "author": "r3dacted42",
+  "keywords": [
+    "rendercv",
+    "vue",
+    "form",
+    "form-renderer",
+    "json-schema",
+    "yaml",
+    "resume",
+    "cv",
+    "tailwindcss",
+    "shadcn-vue"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/r3dacted42/rendercv-editor.git",
+    "directory": "packages/rendercv-form"
+  },
+  "homepage": "https://github.com/r3dacted42/rendercv-editor/tree/main/packages/rendercv-form#readme",
+  "bugs": {
+    "url": "https://github.com/r3dacted42/rendercv-editor/issues"
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.map"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./ui": {
+      "types": "./dist/ui.d.ts",
+      "import": "./dist/ui.js"
+    },
+    "./schema": {
+      "types": "./dist/schema.d.ts",
+      "import": "./dist/schema.js"
+    },
+    "./theme.css": "./dist/theme.css"
+  },
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "scripts": {
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && vue-tsc -p tsconfig.build.json && vite build && node scripts/check-declarations.mjs",
+    "dev": "vite build --watch"
+  },
+  "dependencies": {
+    "@lucide/vue": "^1.58.0",
+    "@vueuse/core": "^14.4.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "reka-ui": "^2.11.0",
+    "tailwind-merge": "^3.6.0",
+    "yaml": "^2.9.0"
+  },
+  "peerDependencies": {
+    "@apidevtools/json-schema-ref-parser": "^16.0.2",
+    "buffer": "^6.0.3",
+    "vue": "^3.5.0"
+  },
+  "peerDependenciesMeta": {
+    "@apidevtools/json-schema-ref-parser": {
+      "optional": true
+    },
+    "buffer": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@apidevtools/json-schema-ref-parser": "^16.0.2",
+    "@vitejs/plugin-vue": "^6.0.8",
+    "@vue/tsconfig": "^0.9.1",
+    "buffer": "^6.0.3",
+    "typescript": "~6.0.2",
+    "vite": "^8.2.2",
+    "vue": "^3.5.41",
+    "vue-tsc": "^3.3.11"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

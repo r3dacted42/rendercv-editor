@@ -1,0 +1,10 @@
+/*
+ * shadcn-vue CLI anchor (see ../components.json).
+ *
+ * The library ships class names, not CSS. This file is NOT imported by the
+ * library build and is NOT published — it exists so `shadcn-vue add` has a valid
+ * Tailwind entry when adding components to the library. The importable defaults
+ * consumers can opt into live in `theme.css` (published as `.../theme.css`).
+ */
+@import "tailwindcss";
+@import "./theme.css";

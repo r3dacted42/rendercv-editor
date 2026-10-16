@@ -8,6 +8,8 @@ export interface ValidationStateStore {
   invalid: Set<string>
   /** Reveal every validation error (e.g. right before exporting). */
   request: () => void
+  /** Clear the requested flag and every recorded error. */
+  reset: () => void
 }
 
 const VALIDATION_STATE_KEY: InjectionKey<ValidationStateStore> = Symbol('validation-state')
@@ -27,14 +29,27 @@ export function provideValidationState(): ValidationStateStore {
     request: () => {
       requested.value = true
     },
+    reset: () => {
+      requested.value = false
+      invalid.clear()
+    },
   }
 
   provide(VALIDATION_STATE_KEY, store)
   return store
 }
 
+/** The nearest provided validation store, if any (does not throw). */
+export function injectValidationState(): ValidationStateStore | undefined {
+  return inject(VALIDATION_STATE_KEY, undefined)
+}
+
+/**
+ * The nearest provided validation store.
+ * Throws when no ancestor called `provideValidationState`.
+ */
 export function useValidationState(): ValidationStateStore {
-  const store = inject(VALIDATION_STATE_KEY)
+  const store = injectValidationState()
   if (!store) throw new Error('useValidationState() must be used inside a component that called provideValidationState()')
   return store
 }

@@ -1,4 +1,4 @@
-import type { JSONSchema } from '@apidevtools/json-schema-ref-parser';
+import type { JsonSchema } from './types';
 
 /**
  * Policy for progressively disclosing optional fields in the form.
@@ -56,7 +56,7 @@ export function isOptional(prop: any): boolean {
 }
 
 /** Exclusive groups whose every member exists on this object schema. */
-export function findExclusiveGroups(schema: JSONSchema): ExclusiveGroup[] {
+export function findExclusiveGroups(schema: JsonSchema): ExclusiveGroup[] {
   const properties = (schema as any)?.properties as Record<string, unknown> | undefined;
   if (!properties) return [];
   return EXCLUSIVE_GROUPS.filter((group) =>

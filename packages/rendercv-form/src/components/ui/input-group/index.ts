@@ -1,6 +1,8 @@
 import type { VariantProps } from 'class-variance-authority'
 import type { HTMLAttributes } from 'vue'
-import type { ButtonVariants } from '@/components/ui/button'
+// Relative on purpose: this specifier is part of the emitted `.d.ts`, and the
+// public declarations must not contain the internal `@/` alias.
+import type { ButtonVariants } from '../button'
 import { cva } from 'class-variance-authority'
 
 export { default as InputGroup } from './InputGroup.vue'

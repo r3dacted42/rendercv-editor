@@ -1,0 +1,288 @@
+# @r3dacted42/rendercv-form
+
+A schema-driven Vue 3 form renderer for [RenderCV](https://rendercv.com) YAML documents.
+
+Point it at a dereferenced JSON Schema and a reactive object, and it renders an editable form
+with the editing UX RenderCV documents need — progressive disclosure of optional fields,
+choose-one (exclusive) groups, free-form section maps, and discriminated unions — while leaving
+layout, toolbars, and import/export chrome to your app.
+
+## Status
+
+`0.1.0` — early. The renderer, its shared form state (collapse / validation / disclosure), the
+document + YAML helpers, schema loading, optional theme defaults, and TypeScript declarations are
+all available. The [playground](https://github.com/r3dacted42/rendercv-editor) is the reference
+implementation.
+
+## Requirements
+
+- Vue `^3.5` (peer dependency).
+- **Tailwind CSS v4** in the host app — the library ships class names, not CSS (see
+  [Styling](#styling)).
+- The library's own runtime dependencies (`reka-ui`, `@vueuse/core`, `@lucide/vue`, `yaml`,
+  `clsx`, `tailwind-merge`, `class-variance-authority`) are installed automatically as regular
+  dependencies — they are external, not bundled, so your app and the library share a single copy.
+- Only if you use the `.../schema` entry: `@apidevtools/json-schema-ref-parser` and `buffer`
+  (optional peers, see [Schema loading](#schema-loading)).
+
+## Install
+
+```bash
+npm install @r3dacted42/rendercv-form
+```
+
+## Quick start
+
+```vue
+<script setup lang="ts">
+import { onMounted, ref } from 'vue';
+import {
+  FormRenderer,
+  CORE_FIELDS,
+  docToYaml,
+  emptyDoc,
+  provideFormState,
+  type RenderCvSchemas,
+} from '@r3dacted42/rendercv-form';
+import { loadSchemas } from '@r3dacted42/rendercv-form/schema';
+
+// Optional. A lone <FormRenderer> creates its own UI state; call this to
+// control it and to share one state across several renderers.
+const form = provideFormState();
+
+const schemas = ref<RenderCvSchemas>();
+const doc = ref(emptyDoc());
+
+onMounted(async () => {
+  schemas.value = await loadSchemas();
+});
+
+const exportYaml = async () => {
+  if (!(await form.validate())) return; // reveal errors; bail if invalid
+  return docToYaml(doc.value);
+};
+</script>
+
+<template>
+  <FormRenderer
+    v-if="schemas"
+    :schema="schemas.cv"
+    v-model="doc.cv"
+    root
+    :core-fields="CORE_FIELDS.root"
+  />
+</template>
+```
+
+## What it handles
+
+- **Optional-field disclosure.** Fields the schema allows to be `null` are hidden behind
+  "Add …" chips until they hold a value. A small `CORE_FIELDS` set stays visible at the root.
+- **Exclusive groups.** RenderCV accepts either `date` or `start_date`/`end_date`, never both.
+  The renderer presents a single choose-one control that never emits both.
+- **Section maps.** `cv.sections` is a map of user-named keys, each matching one of several
+  schemas. Entries can be added (name + type) and removed.
+- **Discriminated unions.** `design` (`theme`) and `locale` (`language`) are `oneOf` unions;
+  the renderer offers a selector and asks for confirmation before discarding customisations.
+- **Persistent collapse state**, a required-field validation registry, and multi-line hints.
+
+## Components
+
+### `<FormRenderer>`
+
+| Prop | Type | Notes |
+| --- | --- | --- |
+| `schema` | `JsonSchema` | **Required.** A dereferenced object schema. |
+| `v-model` | `any` | **Required.** The object being edited. |
+| `root` | `boolean` | Marks a top-level section root. |
+| `coreFields` | `string[]` | Optional fields kept visible at the root (use `CORE_FIELDS.root`). |
+| `path` | `string` | Stable location for collapse persistence. |
+| `title` / `userDefKey` | `string` | Header label / free-form key. |
+| `variant` | `'group' \| 'item'` | `item` renders inline (no header). |
+| `onDelete` | `Function` | Renders a remove button when provided. |
+| `storageKey` | `string` | Namespace for persisted UI state (only when this renderer owns the state). |
+| `persist` | `boolean` | Persist collapse/disclosure to `localStorage` (default `true`). |
+| `ui` | `FormRendererUi` | Extra classes for `root`, `header`, `content`, `chips`. |
+| `class` | — | Falls through to the outermost element. |
+
+One `FormRenderer` edits one section. Render `schemas.cv` for the main content, and
+`schemas.design` / `schemas.locale` / `schemas.settings` for the optional configuration
+sections (typically behind tabs or a dialog).
+
+#### Exposed methods
+
+A template ref exposes an imperative surface that acts on the **shared** form state (so calling it
+on any renderer affects every renderer sharing that state):
+
+| Member | Description |
+| --- | --- |
+| `validate()` | Reveal every error; resolves `true` when nothing is invalid. |
+| `expandAll()` / `collapseAll()` | Expand / collapse every group. |
+| `reset()` | Reset disclosure + validation UI state (does not touch your data). |
+| `output` | The cleaned value (internal `$schemas` markers removed). |
+
+```ts
+const renderer = ref();
+if (await renderer.value.validate()) { /* safe to export */ }
+const cleaned = renderer.value.output;
+```
+
+## Form state & persistence
+
+Collapse, validation, and optional-field disclosure are shared through provide/inject. A lone
+`<FormRenderer>` creates its own state automatically, so the minimal usage needs no setup. Call
+`provideFormState()` when you want to drive the state imperatively, share one state — and one
+"expand all" — across several renderers (e.g. the main `cv` form plus `design`/`locale`/`settings`),
+or configure persistence:
+
+```ts
+const form = provideFormState({
+  storageKey: 'my-app', // collapse → 'my-app-collapse-state', disclosure → 'my-app-field-visibility'
+  persist: true,        // false keeps UI state in memory only
+});
+
+form.expandAll();
+form.collapseAll();
+if (!(await form.validate())) return; // reveal errors, bail if invalid
+form.reset();                         // reset disclosure + validation UI
+```
+
+`provideFormState()` provides the controller, so any descendant can also grab it with
+`useFormState()`. The individual stores remain available if you only want one of them (see below).
+
+### `<ConfirmDialog>`
+
+A small confirmation dialog used for destructive actions (clearing a field, switching a union
+variant). Accepts `title`, `description`, `confirmLabel`, `cancelLabel`, `v-model:open`, emits
+`confirm`, and renders its trigger through the `#trigger` slot.
+
+## Schema loading
+
+`loadSchemas()` lives in its own entry (`@r3dacted42/rendercv-form/schema`) because it pulls in
+`@apidevtools/json-schema-ref-parser` (which depends on `undici`) and a `buffer` polyfill. Those
+two are declared as **optional peer dependencies** — install them only if you use this entry:
+
+```bash
+npm install @apidevtools/json-schema-ref-parser buffer
+```
+
+```ts
+import { loadSchemas, DEFAULT_SCHEMA_URL } from '@r3dacted42/rendercv-form/schema';
+
+// Fetch + dereference the pinned RenderCV schema, split into the four sections.
+const schemas = await loadSchemas();
+
+// Or supply/cache the raw text yourself:
+const schemas2 = await loadSchemas({
+  text: cachedSchemaText,
+  onText: (text) => { cachedSchemaText = text; },
+});
+```
+
+The rest of the package (renderer, composables, YAML helpers) does not depend on it.
+
+## Composables
+
+- `provideFormState(options?)` / `useFormState()` — the shared controller (see above).
+- `useOrProvideFormState(options?)` — what `<FormRenderer>` uses internally: reuse an ancestor's
+  state, or create and provide one. `createFormController(collapsible, validation, visibility)`
+  wraps stores you already have.
+- `provideCollapsibleState(options?)` / `useCollapsibleStore()` / `useCollapsible(key)` —
+  collapse state, persisted to `localStorage`.
+- `provideValidationState()` / `useValidationState()` — the required-field registry
+  (`requested`, `invalid`, `request()`, `reset()`).
+- `provideFieldVisibility(options?)` / `useFieldVisibility()` — which optional fields were
+  revealed, and the chosen mode of an exclusive group.
+
+The `provide*` functions must run inside a component `setup`. Each store module also exports an
+`inject*` variant (returns `undefined` instead of throwing) and a `create*` variant (builds a store
+without providing it).
+
+## Document helpers
+
+- `loadSchemas(options?)` — see above.
+- `yamlToDoc(yaml, schemas)` — parse a RenderCV YAML document into the form's internal shape.
+- `docToYaml(doc)` — serialise a document to RenderCV-compatible YAML.
+- `buildDoc(doc)` — the export-ready plain object (`docToYaml` stringifies this).
+- `emptyDoc()` — a fresh, empty document.
+- `cleanData(data)` / `matchSchema(section, sectionsSchema)` — the underlying primitives.
+- `CORE_FIELDS`, `EXCLUSIVE_GROUPS`, `isOptional`, `findExclusiveGroups` — the field policy.
+- `isMultiline`, `toTitleCase`, `removeTrailingS`, `cn` — small utilities.
+
+Types: `RenderCvDoc`, `RenderCvSchemas`, `ConfigKey`, `DocKey`, `JsonSchema`, `FormRendererUi`,
+`FormStateController`, `FormStateOptions`, and `LoadSchemaOptions` (from `.../schema`).
+
+## Styling
+
+The library ships **class names, not CSS**. Add its output to your Tailwind v4 build so the
+utilities it uses are generated:
+
+```css
+/* your app's CSS */
+@source "../node_modules/@r3dacted42/rendercv-form/dist";
+```
+
+Colours, radius, and the rest come from CSS variables, so re-skinning is a matter of overriding
+them. The renderer expects the usual shadcn-style tokens: `--background`, `--foreground`,
+`--card(-foreground)`, `--popover(-foreground)`, `--primary(-foreground)`,
+`--secondary(-foreground)`, `--muted(-foreground)`, `--accent(-foreground)`,
+`--destructive(-foreground)`, `--border`, `--input`, `--ring`, and `--radius`, mapped into the
+Tailwind theme with `@theme inline { --color-primary: var(--primary); … }`. The playground's
+`src/style.css` is a copy-paste starting point.
+
+The library does not set fonts — it inherits the host app's typography.
+
+#### Theme defaults
+
+If your app doesn't already define these tokens, the mapping above ships as an optional
+stylesheet:
+
+```css
+@import "tailwindcss";
+@import "@r3dacted42/rendercv-form/theme.css";
+```
+
+It contains the neutral shadcn defaults for `:root` / `.dark` plus the `@theme inline` mapping. If
+your app already has these (any shadcn-vue project), don't import it — just add the `@source` line
+above.
+
+### Optional UI primitives
+
+If you want matching chrome (dialogs, toolbars, buttons) without re-creating it, the same
+shadcn-vue components the renderer uses internally are re-exported from a subpath:
+
+```ts
+import { Button, Dialog } from '@r3dacted42/rendercv-form/ui';
+```
+
+These are optional; bring your own if you prefer. This entry deliberately excludes
+app-owned chrome such as the toast `<Toaster>` and `<Skeleton>` — those carry no
+library behaviour and, for a toast singleton like `vue-sonner`, two bundled copies
+would not talk to each other.
+
+> **Type-checking caveat.** The `/ui` entry re-exports components built on `reka-ui`
+> and `@vueuse/core`, so their declarations join your program. Under
+> `skipLibCheck: false` that surfaces two *upstream* declaration gaps — `reka-ui`
+> imports `vue-component-type-helpers` without declaring it as a dependency, and
+> `@vueuse/core` references Web Bluetooth DOM types that aren't in `lib.dom` —
+> neither of which this package controls. Keep `skipLibCheck: true` (the Vue
+> default, set by `@vue/tsconfig`) and the entry type-checks cleanly. The root and
+> `.../schema` entries don't pull these in and are unaffected either way.
+
+## Internal markers
+
+Importing a document attaches an internal `$schemas` array (with `$key`/`$schema` entries) to
+section maps so the renderer can round-trip free-form keys. It is never part of the output —
+`buildDoc` (and `cleanData`) removes it, so it cannot leak into the YAML you export.
+
+## Development
+
+This package lives in the [rendercv-editor](https://github.com/r3dacted42/rendercv-editor)
+monorepo. `npm run build:lib` (or `npm run dev:lib` for watch mode) builds it, and the
+`playground` app is its integration test — see the root README for the full workflow.
+
+## Roadmap
+
+- Richer `ui` overrides (per-field components / slots) beyond the class hooks.
+- Drop the `undici`-sized parser by resolving the schema's (local) `$ref`s in-tree.
+- A stable `1.0` API.

@@ -1,45 +1,46 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useLocalStorage, useWindowScroll } from '@vueuse/core';
-import FormRenderer from './components/FormRenderer.vue';
-import { $RefParser, type JSONSchema } from "@apidevtools/json-schema-ref-parser";
-import { Buffer } from 'buffer';
-import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from './components/ui/tooltip/index.ts';
-import { cleanData, matchSchema } from './lib/utils.ts';
-import { CORE_FIELDS } from './lib/fieldPolicy.ts';
+import {
+  FormRenderer,
+  ConfirmDialog,
+  CORE_FIELDS,
+  emptyDoc,
+  docToYaml,
+  yamlToDoc,
+  provideFormState,
+  type ConfigKey,
+  type RenderCvSchemas,
+} from '@r3dacted42/rendercv-form';
+import { loadSchemas } from '@r3dacted42/rendercv-form/schema';
+import {
+  TooltipProvider,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  Button,
+  ButtonGroup,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@r3dacted42/rendercv-form/ui';
 import DropZone from './components/DropZone.vue';
-import { Toaster } from './components/ui/sonner/index.ts';
+import { Skeleton } from './components/ui/skeleton';
+import { Toaster } from './components/ui/sonner';
 import { toast } from 'vue-sonner';
-import { Button } from './components/ui/button/index.ts';
-import { ButtonGroup } from './components/ui/button-group/index.ts';
-import { Skeleton } from './components/ui/skeleton/index.ts';
-import ConfirmDialog from './components/ConfirmDialog.vue';
 import { ChevronsDownUp, ChevronsUpDown, ClipboardCopy, Cog, Download, FileDown, Import, Trash } from '@lucide/vue';
-import { parse, stringify } from 'yaml';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './components/ui/dialog/index.ts';
-import { provideCollapsibleState } from './composables/useCollapsibleState.ts';
-import { provideValidationState } from './composables/useValidationState.ts';
-import { provideFieldVisibility } from './composables/useFieldVisibility.ts';
-
-const SCHEMA_URL = "https://raw.githubusercontent.com/rendercv/rendercv/refs/tags/v2.8/schema.json";
-
-/** The four top-level keys of a RenderCV document. `cv` is the main content. */
-const DOC_KEYS = ['cv', 'design', 'locale', 'settings'] as const;
-type DocKey = typeof DOC_KEYS[number];
-type ConfigKey = Exclude<DocKey, 'cv'>;
-
-const emptyDoc = () => ({ cv: {} as any, design: {} as any, locale: {} as any, settings: {} as any });
 
 const stored = useLocalStorage("rendercv-draft", emptyDoc());
 
 const schemaString = useLocalStorage("rendercv-schema", "");
-const schema = ref<undefined | JSONSchema>();
-const schemas = ref<undefined | Record<DocKey, JSONSchema>>();
+const schemas = ref<RenderCvSchemas>();
 const cvSchema = computed(() => schemas.value?.cv);
 
-const collapse = provideCollapsibleState();
-const validation = provideValidationState();
-const visibility = provideFieldVisibility();
+const form = provideFormState();
 
 /** Config sections live behind the settings dialog. */
 const CONFIG_SECTIONS: Array<{ key: ConfigKey; label: string }> = [
@@ -49,6 +50,7 @@ const CONFIG_SECTIONS: Array<{ key: ConfigKey; label: string }> = [
 ];
 const activeTab = ref<ConfigKey>('design');
 const settingsOpen = ref(false);
+const exportOpen = ref(false);
 const configSchema = computed(() => schemas.value?.[activeTab.value]);
 
 /** Header shadow --------------------------------------------------------- */
@@ -56,45 +58,18 @@ const { y } = useWindowScroll();
 const isScrolled = computed(() => y.value > 8);
 
 onMounted(async () => {
-  if (!schemaString.value) {
-    const res = await fetch(SCHEMA_URL);
-    schemaString.value = await res.text();
-  }
-  schema.value = JSON.parse(schemaString.value);
-  // @ts-ignore
-  window.Buffer = Buffer;
-  const resolved = await $RefParser.dereference(schema.value);
-  schemas.value = {
-    cv: (resolved as any).$defs.Cv,
-    design: (resolved as any).$defs.BuiltInDesign,
-    locale: (resolved as any).$defs.Locale,
-    settings: (resolved as any).$defs.Settings,
-  };
+  schemas.value = await loadSchemas({
+    text: schemaString.value || undefined,
+    onText: (text) => { schemaString.value = text; },
+  });
 });
 
 const dialogOpen = ref(false);
 const onDrop = (yamlContents: string) => {
+  if (!schemas.value) return;
   try {
-    const convJson = parse(yamlContents) ?? {};
-    const next = emptyDoc();
-
-    if (convJson.cv && typeof convJson.cv === 'object') {
-      next.cv = convJson.cv;
-      const sections = convJson.cv.sections;
-      const sectionsSchema = (cvSchema.value?.properties as any)?.sections;
-      if (sections && typeof sections === 'object' && sectionsSchema) {
-        sections.$schemas = Object.entries(sections).map(([key, obj]) => ({
-          $key: key, $schema: matchSchema(obj, sectionsSchema),
-        }));
-      }
-    }
-
-    for (const key of ['design', 'locale', 'settings'] as const) {
-      if (convJson[key] && typeof convJson[key] === 'object') next[key] = convJson[key];
-    }
-
-    stored.value = next;
-    visibility.reset();
+    stored.value = yamlToDoc(yamlContents, schemas.value);
+    form.reset();
     toast.success("YAML loaded");
     dialogOpen.value = false;
   } catch (e: any) {
@@ -103,25 +78,11 @@ const onDrop = (yamlContents: string) => {
   }
 }
 
-/** Build the full document, dropping anything left empty. */
-const buildOutput = () => {
-  const out: any = {};
-  for (const key of DOC_KEYS) {
-    const cleaned = cleanData(stored.value[key]);
-    if (cleaned !== undefined) out[key] = cleaned;
-  }
-  if (!('cv' in out)) out.cv = {};
-  // Keep `cv` first for readability.
-  return { cv: out.cv, ...out };
-};
-
-const outputYaml = computed(() => stringify(buildOutput()));
+const outputYaml = computed(() => docToYaml(stored.value));
 
 const validateForExport = async () => {
   // Reveal every required-field error before exporting.
-  validation.request();
-  await nextTick();
-  if (validation.invalid.size > 0) {
+  if (!(await form.validate())) {
     toast.error("Fill in the required fields before exporting");
     return false;
   }
@@ -131,7 +92,10 @@ const validateForExport = async () => {
 const onCopy = async () => {
   if (!(await validateForExport())) return;
   navigator.clipboard.writeText(outputYaml.value)
-    .then(() => toast.success("YAML copied to clipboard"))
+    .then(() => {
+      toast.success("YAML copied to clipboard");
+      exportOpen.value = false;
+    })
     .catch(() => toast.error("Could not update clipboard"));
 }
 
@@ -147,11 +111,12 @@ const onDownload = async () => {
   link.remove();
   URL.revokeObjectURL(url);
   toast.success("Downloaded rendercv.yaml");
+  exportOpen.value = false;
 }
 
 const onClear = () => {
   stored.value = emptyDoc();
-  visibility.reset();
+  form.reset();
   toast.success("Form cleared");
 }
 </script>
@@ -184,7 +149,7 @@ const onClear = () => {
             </DialogContent>
           </Dialog>
 
-          <Dialog>
+          <Dialog v-model:open="exportOpen">
             <DialogTrigger as-child>
               <Button>
                 <Download /> Export
@@ -211,11 +176,16 @@ const onClear = () => {
           </Dialog>
 
           <Dialog v-model:open="settingsOpen">
-            <DialogTrigger as-child>
-              <Button variant="secondary">
-                <Cog />
-              </Button>
-            </DialogTrigger>
+            <Tooltip>
+              <TooltipTrigger as-child>
+                <DialogTrigger as-child>
+                  <Button variant="secondary" aria-label="Design, locale & settings">
+                    <Cog />
+                  </Button>
+                </DialogTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Design, locale &amp; settings</TooltipContent>
+            </Tooltip>
             <DialogContent
               class="flex flex-col gap-0 w-full max-w-none h-[100dvh] max-h-none overflow-hidden p-0 top-0 left-0 translate-x-0 translate-y-0 sm:h-auto sm:max-w-2xl sm:max-h-[85vh] sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2">
               <div class="flex shrink-0 flex-col gap-2 border-b p-4 pr-12">
@@ -242,21 +212,26 @@ const onClear = () => {
             </DialogContent>
           </Dialog>
 
-          <ConfirmDialog title="Clear the form?"
-            description="This removes every value from the editor and cannot be undone." confirm-label="Clear"
-            @confirm="onClear">
-            <template #trigger>
-              <Button variant="secondary">
-                <Trash />
-              </Button>
-            </template>
-          </ConfirmDialog>
+          <Tooltip>
+            <ConfirmDialog title="Clear the form?"
+              description="This removes every value from the editor and cannot be undone." confirm-label="Clear"
+              @confirm="onClear">
+              <template #trigger>
+                <TooltipTrigger as-child>
+                  <Button variant="secondary" aria-label="Clear the form">
+                    <Trash />
+                  </Button>
+                </TooltipTrigger>
+              </template>
+            </ConfirmDialog>
+            <TooltipContent>Clear the form</TooltipContent>
+          </Tooltip>
 
           <ButtonGroup>
             <Tooltip>
               <TooltipTrigger as-child>
                 <Button variant="outline" size="icon" aria-label="Collapse all sections"
-                  @click="collapse.collapseAll()">
+                  @click="form.collapseAll()">
                   <ChevronsDownUp />
                 </Button>
               </TooltipTrigger>
@@ -264,7 +239,7 @@ const onClear = () => {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger as-child>
-                <Button variant="outline" size="icon" aria-label="Expand all sections" @click="collapse.expandAll()">
+                <Button variant="outline" size="icon" aria-label="Expand all sections" @click="form.expandAll()">
                   <ChevronsUpDown />
                 </Button>
               </TooltipTrigger>
@@ -282,7 +257,7 @@ const onClear = () => {
           <Skeleton class="h-9 w-44" />
         </div>
         <p class="text-center text-xs text-muted-foreground">
-          {{ schema ? 'Resolving schema references…' : 'Downloading the latest RenderCV schema…' }}
+          Loading the latest RenderCV schema…
         </p>
       </template>
     </div>

@@ -6,6 +6,10 @@
 @import "shadcn-vue/tailwind.css";
 @import "vue-sonner/style.css";
 
+/* The library ships class names, not CSS: let Tailwind generate the utilities
+   it uses by scanning the package source (see README). */
+@source "../../packages/rendercv-form/src";
+
 @custom-variant dark (&:is(.dark *));
 
 :root {

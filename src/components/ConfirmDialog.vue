@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ref } from 'vue';
 import { Button } from './ui/button';
 import {
   Dialog,
@@ -25,7 +24,8 @@ const {
 }>();
 
 const emit = defineEmits<{ confirm: [] }>();
-const open = ref(false);
+/** Open state is a model so callers can also drive it programmatically. */
+const open = defineModel<boolean>('open', { default: false });
 
 const onConfirm = () => {
   emit('confirm');

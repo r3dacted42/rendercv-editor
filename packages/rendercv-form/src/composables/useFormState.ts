@@ -7,6 +7,7 @@ import {
 } from './useCollapsibleState'
 import { injectValidationState, provideValidationState, type ValidationStateStore } from './useValidationState'
 import { injectFieldVisibility, provideFieldVisibility, type FieldVisibilityStore } from './useFieldVisibility'
+import type { HydrateMode } from './usePersistedState'
 
 /** The three UI stores plus a small imperative control surface. */
 export interface FormStateController {
@@ -32,6 +33,12 @@ export interface FormStateOptions {
   storageKey?: string
   /** Persist collapse + disclosure to localStorage (default `true`). */
   persist?: boolean
+  /**
+   * When to restore persisted state (default `immediate`). Pass `mounted` when
+   * the form is part of an SSR shell, so the server-rendered markup and the
+   * first client render agree.
+   */
+  hydrate?: HydrateMode
 }
 
 const FORM_STATE_KEY: InjectionKey<FormStateController> = Symbol('form-state')
@@ -68,11 +75,11 @@ export function createFormController(
  * Must be called from a component's `setup`.
  */
 export function provideFormState(options: FormStateOptions = {}): FormStateController {
-  const { storageKey = 'rendercv', persist = true } = options
+  const { storageKey = 'rendercv', persist = true, hydrate = 'immediate' } = options
 
-  const collapsible = provideCollapsibleState({ storageKey: `${storageKey}-collapse-state`, persist })
+  const collapsible = provideCollapsibleState({ storageKey: `${storageKey}-collapse-state`, persist, hydrate })
   const validation = provideValidationState()
-  const visibility = provideFieldVisibility({ storageKey: `${storageKey}-field-visibility`, persist })
+  const visibility = provideFieldVisibility({ storageKey: `${storageKey}-field-visibility`, persist, hydrate })
 
   const controller = createFormController(collapsible, validation, visibility)
   provide(FORM_STATE_KEY, controller)
@@ -89,12 +96,13 @@ export function useOrProvideFormState(options: FormStateOptions = {}): FormState
   if (existing) return existing
 
   const storageKey = options.storageKey ?? 'rendercv'
+  const hydrate = options.hydrate ?? 'immediate'
   // Reuse whatever an ancestor already provided, creating only what is missing.
   const collapsible = injectCollapsibleState()
-    ?? provideCollapsibleState({ storageKey: `${storageKey}-collapse-state`, persist: options.persist })
+    ?? provideCollapsibleState({ storageKey: `${storageKey}-collapse-state`, persist: options.persist, hydrate })
   const validation = injectValidationState() ?? provideValidationState()
   const visibility = injectFieldVisibility()
-    ?? provideFieldVisibility({ storageKey: `${storageKey}-field-visibility`, persist: options.persist })
+    ?? provideFieldVisibility({ storageKey: `${storageKey}-field-visibility`, persist: options.persist, hydrate })
 
   return createFormController(collapsible, validation, visibility)
 }

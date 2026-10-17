@@ -1,6 +1,6 @@
-import type { InjectionKey, MaybeRefOrGetter, Ref, WritableComputedRef } from 'vue'
-import { computed, inject, provide, ref, toValue } from 'vue'
-import { useLocalStorage } from '@vueuse/core'
+import type { InjectionKey, MaybeRefOrGetter, WritableComputedRef } from 'vue'
+import { computed, inject, provide, toValue } from 'vue'
+import { createPersistedState, type HydrateMode } from './usePersistedState'
 
 export interface PersistedCollapseState {
   /** Fallback applied to every group that has no explicit override. */
@@ -21,6 +21,12 @@ export interface CollapsibleStateOptions {
   storageKey?: string
   /** Persist to localStorage (default `true`). When `false`, state lives in memory only. */
   persist?: boolean
+  /**
+   * When to restore persisted state (default `immediate`). Use `mounted` when
+   * the renderer is part of an SSR shell, so the first client render matches the
+   * server-rendered one.
+   */
+  hydrate?: HydrateMode
 }
 
 const COLLAPSIBLE_STATE_KEY: InjectionKey<CollapsibleStateStore> = Symbol('collapsible-state')
@@ -39,14 +45,16 @@ function isState(value: unknown): value is PersistedCollapseState {
  * to also share it with descendant renderers.
  */
 export function createCollapsibleState(options: CollapsibleStateOptions = {}): CollapsibleStateStore {
-  const { storageKey = 'rendercv-collapse-state', persist = true } = options
+  const { storageKey = 'rendercv-collapse-state', persist = true, hydrate = 'immediate' } = options
 
-  const state: Ref<PersistedCollapseState> = persist
-    ? useLocalStorage<PersistedCollapseState>(storageKey, emptyState())
-    : ref(emptyState())
-
-  // Guard against stale or incompatible values from earlier versions.
-  if (!isState(state.value)) state.value = emptyState()
+  const state = createPersistedState<PersistedCollapseState>({
+    storageKey,
+    persist,
+    hydrate,
+    empty: emptyState,
+    // Guard against stale or incompatible values from earlier versions.
+    validate: isState,
+  })
 
   return {
     isOpen: (key) => state.value.overrides[key] ?? state.value.default,

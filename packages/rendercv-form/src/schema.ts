@@ -1,16 +1,19 @@
 import { $RefParser } from '@apidevtools/json-schema-ref-parser';
 import { Buffer } from 'buffer';
 import type { JsonSchema, RenderCvSchemas } from './lib/types';
+import { DEFAULT_SCHEMA_URL, fetchSchemaText, splitSchemas } from './lib/schemaMeta';
 
 /**
  * Schema loading lives in its own entry point (`@r3dacted42/rendercv-form/schema`)
  * so `json-schema-ref-parser` and the `buffer` polyfill are only pulled in when
  * they are actually used.
+ *
+ * If you would rather not ship the parser at all, import the parser-free pieces
+ * (`DEFAULT_SCHEMA_URL`, `schemaUrl()`, `fetchSchemaText()`, `splitSchemas()`)
+ * from the package root and dereference once on your server.
  */
 
-/** The RenderCV schema version this package targets. */
-export const DEFAULT_SCHEMA_URL =
-  'https://raw.githubusercontent.com/rendercv/rendercv/refs/tags/v2.8/schema.json';
+export * from './lib/schemaMeta';
 
 export interface LoadSchemaOptions {
   /** Schema URL. Defaults to `DEFAULT_SCHEMA_URL`. */
@@ -28,12 +31,11 @@ export interface LoadSchemaOptions {
  * section schemas the renderer edits.
  */
 export async function loadSchemas(options: LoadSchemaOptions = {}): Promise<RenderCvSchemas> {
-  const { url = DEFAULT_SCHEMA_URL, text, onText, fetch: fetchImpl = fetch } = options;
+  const { url = DEFAULT_SCHEMA_URL, text, onText, fetch: fetchImpl } = options;
 
   let raw = text;
   if (raw === undefined) {
-    const res = await fetchImpl(url);
-    raw = await res.text();
+    raw = await fetchSchemaText({ url, fetch: fetchImpl });
     onText?.(raw);
   }
 
@@ -45,10 +47,5 @@ export async function loadSchemas(options: LoadSchemaOptions = {}): Promise<Rend
 
   const resolved = (await $RefParser.dereference(schema)) as any;
 
-  return {
-    cv: resolved.$defs.Cv,
-    design: resolved.$defs.BuiltInDesign,
-    locale: resolved.$defs.Locale,
-    settings: resolved.$defs.Settings,
-  };
+  return splitSchemas(resolved);
 }

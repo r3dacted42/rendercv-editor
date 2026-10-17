@@ -16,8 +16,8 @@ reusable library and a demo app.
 │   └── rendercv-form/             # the published library
 │       ├── src/
 │       │   ├── components/        # FormRenderer, ConfirmDialog, shadcn-vue UI kit
-│       │   ├── composables/       # collapse / validation / visibility / form state
-│       │   ├── lib/               # document + YAML helpers, types, field policy
+│       │   ├── composables/       # collapse / validation / visibility / form state, persistence
+│       │   ├── lib/               # YAML + document ops, headless validation, schema metadata, policy
 │       │   ├── index.ts           # public API               → "."
 │       │   ├── ui.ts              # UI-primitive re-exports  → "./ui"
 │       │   ├── schema.ts          # schema loading           → "./schema"

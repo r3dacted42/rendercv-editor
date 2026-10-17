@@ -9,14 +9,18 @@ layout, toolbars, and import/export chrome to your app.
 
 ## Status
 
-`0.1.0` — early. The renderer, its shared form state (collapse / validation / disclosure), the
+`0.2.0` — early. The renderer, its shared form state (collapse / validation / disclosure), the
 document + YAML helpers, schema loading, optional theme defaults, and TypeScript declarations are
-all available. The [playground](https://github.com/r3dacted42/rendercv-editor) is the reference
-implementation.
+all available. `0.2.0` adds the server-side story: SSR-safe UI state, headless `validateDoc()` /
+`validateYaml()`, `$schemas`-aware document-editing primitives, and parser-free schema coordinates
+(`SCHEMA_VERSION`, `DEFAULT_SCHEMA_URL`, `schemaUrl()`, `fetchSchemaText()`, `splitSchemas()`).
+The [playground](https://github.com/r3dacted42/rendercv-editor) is the reference implementation.
 
 ## Requirements
 
 - Vue `^3.5` (peer dependency).
+- The parser-free surface (`validateDoc`, `validateYaml`, `splitSchemas`, `fetchSchemaText`, the
+  document helpers) runs in plain Node — no DOM, no Vue — see [SSR](#server-side-rendering-ssr).
 - **Tailwind CSS v4** in the host app — the library ships class names, not CSS (see
   [Styling](#styling)).
 - The library's own runtime dependencies (`reka-ui`, `@vueuse/core`, `@lucide/vue`, `yaml`,
@@ -102,6 +106,7 @@ const exportYaml = async () => {
 | `onDelete` | `Function` | Renders a remove button when provided. |
 | `storageKey` | `string` | Namespace for persisted UI state (only when this renderer owns the state). |
 | `persist` | `boolean` | Persist collapse/disclosure to `localStorage` (default `true`). |
+| `hydrate` | `'immediate' \| 'mounted'` | When to restore persisted UI state (default `immediate`); use `mounted` for SSR. |
 | `ui` | `FormRendererUi` | Extra classes for `root`, `header`, `content`, `chips`. |
 | `class` | — | Falls through to the outermost element. |
 
@@ -139,6 +144,7 @@ or configure persistence:
 const form = provideFormState({
   storageKey: 'my-app', // collapse → 'my-app-collapse-state', disclosure → 'my-app-field-visibility'
   persist: true,        // false keeps UI state in memory only
+  hydrate: 'immediate', // 'mounted' defers the restore until after mount (SSR)
 });
 
 form.expandAll();
@@ -149,6 +155,112 @@ form.reset();                         // reset disclosure + validation UI
 
 `provideFormState()` provides the controller, so any descendant can also grab it with
 `useFormState()`. The individual stores remain available if you only want one of them (see below).
+
+## Server-side rendering (SSR)
+
+The renderer and its state composables are safe to render on a server (Nitro, Nuxt, Vite SSR): the
+persistence stores never touch `window`/`localStorage` when it is absent, so they fall back to
+in-memory state instead of throwing. The renderer also brings its own tooltip provider, so no
+app-level wrapper is needed for it to render.
+
+There is one thing to choose deliberately. With the default `hydrate: 'immediate'`, the persisted
+value is read during `setup`, so the *first client render* can differ from the server-rendered
+markup (a hydration mismatch) whenever the visitor has persisted UI state. Pick one:
+
+```vue
+<!-- 1. Let the renderer decide: render defaults on both sides, restore after mount. -->
+<FormRenderer :schema="schemas.cv" v-model="doc.cv" root hydrate="mounted" :core-fields="CORE_FIELDS.root" />
+
+<!-- 2. Or opt out of persistence entirely and own the mounting yourself. -->
+<ClientOnly>
+  <FormRenderer :schema="schemas.cv" v-model="doc.cv" root :persist="false" :core-fields="CORE_FIELDS.root" />
+</ClientOnly>
+```
+
+`hydrate: 'mounted'` only applies when the renderer owns the state; when you call
+`provideFormState()`, pass it there (or on any `provideCollapsibleState` /
+`provideFieldVisibility` call).
+
+The document itself is plain data, so it can be built on the server and hydrated as is:
+
+```ts
+// server
+const schemas = await loadSchemas();            // or splitSchemas(dereferencedJson)
+const doc = yamlToDoc(await readFile('cv.yaml', 'utf8'), schemas);
+return { schemas, doc };                        // ship the resolved schemas + doc to the client
+```
+
+## Headless validation
+
+`validateDoc()` / `validateYaml()` run the same rules the form itself enforces — but with no DOM,
+no Vue and no UI registry, so a server can vet a document (e.g. YAML produced by an LLM) before it
+ever reaches the client:
+
+```ts
+import { validateDoc, validateYaml, yamlToDoc } from '@r3dacted42/rendercv-form';
+
+const { doc, errors } = validateYaml(llmOutput, schemas);
+if (errors.length) {
+  return errors.map((e) => `${e.pathString}: ${e.message}`);
+  // 'cv.sections.experience[0].company: Missing required "Company".'
+}
+
+// Already have a document? Validate it directly.
+const more = validateDoc(yamlToDoc(yaml, schemas), schemas);
+```
+
+Each `ValidationError` carries machine-readable `path` (segments) and `pathString` (display form,
+round-trips through `parsePath()`), a `code`, the schema `title` when it declares one, and a
+human-readable `message`:
+
+| `code` | Meaning |
+| --- | --- |
+| `required` | A property in the schema's `required` list is blank (`undefined` / `null` / `''`). |
+| `type` | The value doesn't match the declared type. |
+| `enum` | The value isn't one of the schema's `enum` / `const` values. |
+| `exclusive` | Mutually exclusive fields are both set (e.g. `date` and `start_date`). |
+| `parse` | The YAML couldn't be parsed (only from `validateYaml()`). |
+
+It is deliberately *not* a general JSON Schema validator: the checks above (plus discriminated-union
+resolution, including the `$schemas` markers on section maps) are exactly what `<FormRenderer>`
+refuses to submit, so the two can't diverge. `pattern`, `format`, ranges and friends are left to a
+dedicated validator such as Ajv if you need them. Pass **dereferenced** schemas, as returned by
+`loadSchemas()` or `splitSchemas()`.
+
+## Editing a document programmatically
+
+The renderer edits its `v-model` object in place, and so can you. Every helper mutates `root` and
+returns it, so calls compose:
+
+```ts
+import { getAtPath, insertAtPath, moveAtPath, removeAtPath, reorderAtPath, setAtPath } from '@r3dacted42/rendercv-form';
+
+const path = ['cv', 'sections', 'experience'] as const;
+
+getAtPath(doc, [...path, 0, 'company']);      // read
+setAtPath(doc, [...path, 0, 'position'], 'Staff Engineer'); // write (creates missing containers)
+insertAtPath(doc, path, 0, { company: 'Acme' });            // insert at an index (clamped)
+moveAtPath(doc, path, 0, 2);                                // drag-and-drop reorder
+reorderAtPath(doc, path, [2, 0, 1]);                        // any permutation
+removeAtPath(doc, [...path, 1]);                            // delete a key or splice an index
+```
+
+Paths are **segment arrays**, never strings — dotted notation is only a display form
+(`formatPath()` / `parsePath()`, which quote keys containing `.` or brackets). Section maps (whose
+keys map to interchangeable schemas) get `$schemas`-aware helpers so the internal marker can never
+drift out of sync:
+
+```ts
+import { addSection, removeSection, renameSection, sectionMarkers } from '@r3dacted42/rendercv-form';
+
+const sections = doc.cv.sections ?? (doc.cv.sections = {});
+addSection(sections, 'projects', schemas.cv.properties.sections.anyOf[1].additionalProperties.anyOf[0]);
+removeSection(sections, 'projects');           // drops the key *and* its marker
+renameSection(sections, 'projects', 'side-projects'); // moves the key and its marker
+```
+
+`removeAtPath()` already drops a section's marker when it removes the key, so plain path edits are
+marker-correct too. Markers are never part of the exported YAML (`buildDoc` strips them).
 
 ### `<ConfirmDialog>`
 
@@ -181,6 +293,29 @@ const schemas2 = await loadSchemas({
 
 The rest of the package (renderer, composables, YAML helpers) does not depend on it.
 
+### Keeping the parser off the client
+
+The parser-free half lives on the **root** entry, so a server can dereference once and cache the
+result while browser bundles never see `json-schema-ref-parser`/`undici`/`buffer`:
+
+```ts
+import { DEFAULT_SCHEMA_URL, SCHEMA_VERSION, fetchSchemaText, schemaUrl, splitSchemas } from '@r3dacted42/rendercv-form';
+
+SCHEMA_VERSION;      // 'v2.8' — the RenderCV release this package targets
+DEFAULT_SCHEMA_URL;  // the raw, un-dereferenced schema JSON for that version
+schemaUrl('v2.9');   // the same URL pinned to another version
+
+// server: fetch once, cache the text (or the dereferenced JSON) however you like
+const text = await fetchSchemaText();          // no $ref resolution, no parser
+
+// anywhere: turn a dereferenced schema into the four sections
+const schemas = splitSchemas(dereferencedJson);
+```
+
+`DEFAULT_SCHEMA_URL` / `SCHEMA_VERSION` are also re-exported from `.../schema` for compatibility.
+Dereferencing is the only step that needs the parser, and it can happen once, on the server, with
+whatever tool you prefer.
+
 ## Composables
 
 - `provideFormState(options?)` / `useFormState()` — the shared controller (see above).
@@ -198,6 +333,12 @@ The `provide*` functions must run inside a component `setup`. Each store module 
 `inject*` variant (returns `undefined` instead of throwing) and a `create*` variant (builds a store
 without providing it).
 
+Both persistence stores take `{ storageKey, persist, hydrate }` (see
+[SSR](#server-side-rendering-ssr)). Note that provide/inject is *ancestor* based: to read a store
+with `useCollapsibleStore()` / `useFieldVisibility()` / `useValidationState()`, the component must be
+a **descendant** of the one that provided it — never the same component. `<FormRenderer>` reads its
+own controller directly, so a lone renderer is unaffected.
+
 ## Document helpers
 
 - `loadSchemas(options?)` — see above.
@@ -207,10 +348,25 @@ without providing it).
 - `emptyDoc()` — a fresh, empty document.
 - `cleanData(data)` / `matchSchema(section, sectionsSchema)` — the underlying primitives.
 - `CORE_FIELDS`, `EXCLUSIVE_GROUPS`, `isOptional`, `findExclusiveGroups` — the field policy.
+- `isBlank` / `isFilled` — the shared "empty" / "filled" predicates behind both required-field
+  validation and optional-field disclosure.
 - `isMultiline`, `toTitleCase`, `removeTrailingS`, `cn` — small utilities.
 
+Validation: `validateDoc(doc, schemas)`, `validateYaml(yaml, schemas)` — see
+[Headless validation](#headless-validation).
+
+Editing: `getAtPath`, `hasAtPath`, `setAtPath`, `insertAtPath`, `removeAtPath`, `moveAtPath`,
+`reorderAtPath`, `formatPath`, `parsePath`, `sectionMarkers`, `sectionMarker`, `addSection`,
+`removeSection`, `renameSection` — see
+[Editing a document programmatically](#editing-a-document-programmatically).
+
+Schema coordinates: `SCHEMA_VERSION`, `DEFAULT_SCHEMA_URL`, `schemaUrl`, `fetchSchemaText`,
+`splitSchemas` — see [Keeping the parser off the client](#keeping-the-parser-off-the-client).
+
 Types: `RenderCvDoc`, `RenderCvSchemas`, `ConfigKey`, `DocKey`, `JsonSchema`, `FormRendererUi`,
-`FormStateController`, `FormStateOptions`, and `LoadSchemaOptions` (from `.../schema`).
+`FormStateController`, `FormStateOptions`, `HydrateMode`, `DocPath`, `SectionMarker`,
+`ValidationError`, `ValidationCode`, `ValidateYamlResult`, `FetchSchemaTextOptions`,
+`LoadSchemaOptions` (from `.../schema`).
 
 ## Styling
 
@@ -273,7 +429,9 @@ would not talk to each other.
 
 Importing a document attaches an internal `$schemas` array (with `$key`/`$schema` entries) to
 section maps so the renderer can round-trip free-form keys. It is never part of the output —
-`buildDoc` (and `cleanData`) removes it, so it cannot leak into the YAML you export.
+`buildDoc` (and `cleanData`) removes it, so it cannot leak into the YAML you export — and it is
+never treated as data: validation skips `$…` keys, and the editing helpers keep it in sync
+(`removeAtPath` drops a section's marker, `addSection` / `renameSection` maintain it).
 
 ## Development
 
@@ -284,5 +442,7 @@ monorepo. `npm run build:lib` (or `npm run dev:lib` for watch mode) builds it, a
 ## Roadmap
 
 - Richer `ui` overrides (per-field components / slots) beyond the class hooks.
-- Drop the `undici`-sized parser by resolving the schema's (local) `$ref`s in-tree.
+- Make the schema parser optional everywhere: resolve the schema's (local) `$ref`s in-tree so
+  `.../schema` no longer needs `json-schema-ref-parser`/`undici`.
+- Optional Ajv-compatible export of the validation rules (`validateDoc` as a JSON Schema dialect).
 - A stable `1.0` API.

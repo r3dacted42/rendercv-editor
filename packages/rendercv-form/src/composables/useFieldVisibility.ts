@@ -1,6 +1,6 @@
-import type { InjectionKey, Ref } from 'vue';
-import { inject, provide, ref } from 'vue';
-import { useLocalStorage } from '@vueuse/core';
+import type { InjectionKey } from 'vue';
+import { inject, provide } from 'vue';
+import { createPersistedState, type HydrateMode } from './usePersistedState';
 
 /**
  * UI state for the optional-field disclosure, persisted to localStorage so
@@ -33,6 +33,12 @@ export interface FieldVisibilityOptions {
   storageKey?: string;
   /** Persist to localStorage (default `true`). When `false`, state lives in memory only. */
   persist?: boolean;
+  /**
+   * When to restore persisted state (default `immediate`). Use `mounted` when
+   * the renderer is part of an SSR shell, so the first client render matches the
+   * server-rendered one.
+   */
+  hydrate?: HydrateMode;
 }
 
 const FIELD_VISIBILITY_KEY: InjectionKey<FieldVisibilityStore> = Symbol('field-visibility');
@@ -48,14 +54,16 @@ function isState(value: unknown): value is PersistedFieldVisibility {
 
 /** Creates a visibility store. Must be called from a `setup` when persisting. */
 export function createFieldVisibility(options: FieldVisibilityOptions = {}): FieldVisibilityStore {
-  const { storageKey = 'rendercv-field-visibility', persist = true } = options;
+  const { storageKey = 'rendercv-field-visibility', persist = true, hydrate = 'immediate' } = options;
 
-  const state: Ref<PersistedFieldVisibility> = persist
-    ? useLocalStorage<PersistedFieldVisibility>(storageKey, emptyState())
-    : ref(emptyState());
-
-  // Guard against stale or incompatible values from earlier versions.
-  if (!isState(state.value)) state.value = emptyState();
+  const state = createPersistedState<PersistedFieldVisibility>({
+    storageKey,
+    persist,
+    hydrate,
+    empty: emptyState,
+    // Guard against stale or incompatible values from earlier versions.
+    validate: isState,
+  });
 
   return {
     isRevealed: (key) => state.value.revealed[key] === true,

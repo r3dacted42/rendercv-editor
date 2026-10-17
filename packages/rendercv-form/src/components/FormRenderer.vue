@@ -7,18 +7,17 @@ import { Button } from './ui/button';
 import { CheckIcon, ChevronRightIcon, InfoIcon, MinusIcon, PlusIcon, XIcon } from '@lucide/vue';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Switch } from './ui/switch';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { PopoverClose } from 'reka-ui';
 import { computed, onScopeDispose, reactive, ref, watchEffect } from 'vue';
 import { cleanData, cn, removeTrailingS, toTitleCase } from '@/lib/utils';
 import { isMultiline } from '@/lib/fieldHints';
-import { findExclusiveGroups, isOptional, type ExclusiveGroup } from '@/lib/fieldPolicy';
+import { findExclusiveGroups, isBlank, isFilled, isOptional, type ExclusiveGroup } from '@/lib/fieldPolicy';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput, InputGroupTextarea } from './ui/input-group';
 import { ButtonGroup } from './ui/button-group';
 import ConfirmDialog from './ConfirmDialog.vue';
-import { useCollapsible, useCollapsibleStore } from '@/composables/useCollapsibleState';
 import { useOrProvideFormState } from '@/composables/useFormState';
 import type { ExclusiveMode } from '@/composables/useFieldVisibility';
 
@@ -35,6 +34,7 @@ let {
   coreFields,
   storageKey,
   persist,
+  hydrate,
   ui,
 } = defineProps<{
   schema: JsonSchema,
@@ -56,6 +56,12 @@ let {
   storageKey?: string,
   /** Persist collapse/disclosure to localStorage. Only used when this renderer owns the state. */
   persist?: boolean,
+  /**
+   * When to restore persisted UI state (default `immediate`). Pass `mounted` when
+   * the renderer is part of an SSR shell, so the first client render matches the
+   * server-rendered markup. Only used when this renderer owns the state.
+   */
+  hydrate?: 'immediate' | 'mounted',
   /** Extra classes for named regions (see `FormRendererUi`). */
   ui?: FormRendererUi,
 }>();
@@ -66,7 +72,7 @@ let {
  * lone renderer is self-contained, while an app can share one state (and one
  * "collapse all") across several renderers via `provideFormState`.
  */
-const form = useOrProvideFormState({ storageKey, persist });
+const form = useOrProvideFormState({ storageKey, persist, hydrate });
 const validation = form.validation;
 const visibility = form.visibility;
 
@@ -240,10 +246,19 @@ const hasHeader = computed(() => !!(title || userDefKey));
 const headerTitle = computed(() => getPropTitle({}, title || userDefKey || 'entry'));
 
 const collapseKey = computed(() => path || 'root');
-const open = useCollapsible(() => collapseKey.value);
+/**
+ * Writable collapse state for this group. It reads the shared store straight
+ * off the form controller instead of `useCollapsible()`: a component cannot
+ * `inject()` what it `provide()`d itself, so a self-contained (lone) renderer
+ * must not go through provide/inject for its own state.
+ */
+const open = computed({
+  get: () => form.collapsible.isOpen(collapseKey.value),
+  set: (value: boolean) => form.collapsible.setOpen(collapseKey.value, value),
+});
 
 /** Collapse state for an array-level group (single heading for all items). */
-const collapseStore = useCollapsibleStore();
+const collapseStore = form.collapsible;
 const groupKey = (key: string) => `${path}.${key}`;
 const groupOpen = (key: string) => collapseStore.isOpen(groupKey(key));
 const setGroupOpen = (key: string, open: boolean) => collapseStore.setOpen(groupKey(key), open);
@@ -264,14 +279,7 @@ const coreList = computed(() => coreFields ?? []);
 const isCore = (key: string) => coreList.value.includes(key);
 
 /** A field counts as "filled" once it holds a non-empty value of any kind. */
-const hasValue = (key: string | undefined): boolean => {
-  if (!key) return false;
-  const value = data.value?.[key];
-  if (value === undefined || value === null || value === '') return false;
-  if (Array.isArray(value) && value.length === 0) return false;
-  if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) return false;
-  return true;
-};
+const hasValue = (key: string | undefined): boolean => !!key && isFilled(data.value?.[key]);
 
 const revealKey = (key: string) => `${path}.${key}`;
 const isRevealed = (key: string) => visibility.isRevealed(revealKey(key));
@@ -425,10 +433,8 @@ const confirmUnionSwitch = () => {
 const touched = reactive(new Set<string>());
 const markTouched = (key: string) => touched.add(key);
 
-const isEmpty = (value: any) => value === undefined || value === null || value === '';
-
 const isInvalid = (key: string) =>
-  isRequiredProp(key) && isEmpty(data.value[key]) && (touched.has(key) || validation.requested.value);
+  isRequiredProp(key) && isBlank(data.value[key]) && (touched.has(key) || validation.requested.value);
 
 const fieldId = (key: string) => `${collapseKey.value}.${key}`;
 
@@ -486,6 +492,12 @@ defineExpose({
 
 <template>
   <FieldSet :class="cn(isItem ? 'border-0 p-0 gap-2' : 'border p-2 gap-2', ui?.root)">
+    <!--
+      reka-ui's tooltips require a `TooltipProvider` ancestor. Rendering one here
+      (it renders no DOM of its own) keeps the renderer self-contained: no app
+      level provider is needed, and an SSR shell won't throw for a missing one.
+    -->
+    <TooltipProvider>
     <Collapsible :open="isItem || open" @update:open="onOpenChange" class="flex flex-col gap-2">
       <div v-if="!isItem && (hasHeader || onDelete)" class="flex flex-row items-center justify-between gap-2"
         :class="ui?.header">
@@ -820,5 +832,6 @@ defineExpose({
         <span class="hidden" aria-hidden="true" />
       </template>
     </ConfirmDialog>
+    </TooltipProvider>
   </FieldSet>
 </template>

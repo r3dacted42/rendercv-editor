@@ -30,6 +30,18 @@ export * from './lib/types';
 export * from './lib/yaml';
 export { cleanData, matchSchema, cn, toTitleCase, removeTrailingS } from './lib/utils';
 
+/* Headless validation (server-side friendly) ------------------------------ */
+export * from './lib/validate';
+
+/* Document editing (path primitives, `$schemas`-aware) -------------------- */
+export * from './lib/docOps';
+
+/* Schema coordinates + parser-free schema loading ------------------------- */
+export * from './lib/schemaMeta';
+
+/* Persistence ------------------------------------------------------------- */
+export type { HydrateMode } from './composables/usePersistedState';
+
 /* Field policy (progressive disclosure, exclusive groups) ----------------- */
 export * from './lib/fieldPolicy';
 

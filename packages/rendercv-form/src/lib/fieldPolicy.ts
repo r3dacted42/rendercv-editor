@@ -45,6 +45,26 @@ const variantsOf = (prop: any): any[] => {
   return Array.isArray(variants) ? variants : [];
 };
 
+/**
+ * The form's notion of "empty" for a required field: a value that counts as
+ * missing. Shared by the renderer (which reveals the error) and `validateDoc()`
+ * (which reports it headlessly) so the two can never disagree.
+ */
+export const isBlank = (value: unknown): boolean =>
+  value === undefined || value === null || value === '';
+
+/**
+ * Whether a field holds anything worth showing. Used by the optional-field
+ * disclosure and the exclusive-group controls: a blank value, an empty array
+ * and an empty object all count as "not filled".
+ */
+export function isFilled(value: unknown): boolean {
+  if (isBlank(value)) return false;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === 'object') return Object.keys(value as object).length > 0;
+  return true;
+}
+
 /** True when the schema lets the user leave this property out entirely. */
 export function isOptional(prop: any): boolean {
   if (!prop || typeof prop !== 'object') return false;

@@ -46,12 +46,13 @@ export interface FetchSchemaTextOptions {
  * a browser bundle that only needs the text to hand to a server).
  */
 export async function fetchSchemaText(options: FetchSchemaTextOptions = {}): Promise<string> {
-  const { url = DEFAULT_SCHEMA_URL, fetch: fetchImpl = fetch } = options;
-  if (typeof fetchImpl !== 'function') {
+  const { url = DEFAULT_SCHEMA_URL, fetch: fetchImpl } = options;
+  const request = fetchImpl ?? (typeof fetch === 'function' ? fetch : undefined);
+  if (!request) {
     throw new Error('fetchSchemaText() needs a global `fetch` (or pass one via the `fetch` option).');
   }
 
-  const response = await fetchImpl(url);
+  const response = await request(url);
   if (response && !response.ok) {
     throw new Error(`Could not fetch the RenderCV schema from ${url} (${response.status} ${response.statusText}).`);
   }

@@ -33,7 +33,7 @@ let {
   root = false,
   coreFields,
   storageKey,
-  persist,
+  persist = true,
   hydrate,
   ui,
 } = defineProps<{

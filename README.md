@@ -23,11 +23,13 @@ reusable library and a demo app.
 │       │   ├── schema.ts          # schema loading           → "./schema"
 │       │   └── theme.css          # optional token defaults  → "./theme.css"
 │       ├── scripts/               # build guards (declaration checks)
+│       ├── tests/                 # Vitest suites (jsdom + Node/SSR) and the schema fixture
 │       ├── components.json        # shadcn-vue CLI config (development only)
 │       ├── tsconfig.build.json    # declaration emission
+│       ├── vitest.config.ts       # test config
 │       └── vite.config.ts         # library build
 ├── playground/                    # the demo app (consumes the library)
-└── .github/workflows/             # build + deploy to gh-pages
+└── .github/workflows/             # test, build + deploy to gh-pages
 ```
 
 ## Requirements
@@ -55,6 +57,8 @@ This builds the library and starts the playground at
 | --- | --- |
 | `npm run dev` | Build the library, then run the playground dev server. |
 | `npm run build` | Build the library, then build the playground (`playground/dist`). |
+| `npm test` | Run the library's Vitest suite (jsdom + Node/SSR environments). |
+| `npm run typecheck` | Type-check the library, its tests and its configs. |
 | `npm run preview` | Preview the built playground. |
 | `npm run build:lib` | Build only the library. |
 | `npm run dev:lib` | Rebuild the library on change (`vite build --watch`). |
@@ -105,6 +109,6 @@ Afterwards, reset `playground/package.json` back to the workspace range (`"*"`) 
 
 ## Deployment
 
-`.github/workflows/deploy.yml` builds the library and the playground and publishes
-`playground/dist` to the `gh-pages` branch. The playground's `base` is `/rendercv-editor/`
-(see `playground/vite.config.ts`).
+`.github/workflows/deploy.yml` runs the library's tests, builds the library and the playground, and
+publishes `playground/dist` to the `gh-pages` branch. The playground's `base` is
+`/rendercv-editor/` (see `playground/vite.config.ts`).

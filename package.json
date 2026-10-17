@@ -12,6 +12,8 @@
     "dev:lib": "npm run dev -w @r3dacted42/rendercv-form",
     "dev": "npm run build:lib && npm run dev -w playground",
     "build": "npm run build:lib && npm run build -w playground",
+    "test": "npm test -w @r3dacted42/rendercv-form",
+    "typecheck": "npm run typecheck -w @r3dacted42/rendercv-form",
     "preview": "npm run preview -w playground"
   }
 }

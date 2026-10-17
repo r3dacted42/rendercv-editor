@@ -105,7 +105,7 @@ const exportYaml = async () => {
 | `variant` | `'group' \| 'item'` | `item` renders inline (no header). |
 | `onDelete` | `Function` | Renders a remove button when provided. |
 | `storageKey` | `string` | Namespace for persisted UI state (only when this renderer owns the state). |
-| `persist` | `boolean` | Persist collapse/disclosure to `localStorage` (default `true`). |
+| `persist` | `boolean` | Persist collapse/disclosure to `localStorage` (default `true`; only when this renderer owns the state). |
 | `hydrate` | `'immediate' \| 'mounted'` | When to restore persisted UI state (default `immediate`); use `mounted` for SSR. |
 | `ui` | `FormRendererUi` | Extra classes for `root`, `header`, `content`, `chips`. |
 | `class` | — | Falls through to the outermost element. |
@@ -438,6 +438,27 @@ never treated as data: validation skips `$…` keys, and the editing helpers kee
 This package lives in the [rendercv-editor](https://github.com/r3dacted42/rendercv-editor)
 monorepo. `npm run build:lib` (or `npm run dev:lib` for watch mode) builds it, and the
 `playground` app is its integration test — see the root README for the full workflow.
+
+### Tests
+
+```bash
+npm test          # from the repo root, or in this package
+npm run test:watch
+npm run typecheck # src + tests + configs
+```
+
+[Vitest](https://vitest.dev) runs against `src/` (no build step) in two environments: **jsdom**
+for the renderer and the persistence stores, and bare **Node** for the SSR suite
+(`tests/ssr.test.ts`), which asserts that nothing touches `window`/`localStorage` and that the
+renderer still server-renders. The validation tests run against a committed snapshot of the real
+dereferenced RenderCV schema (`tests/fixtures/`), and the heap-free helpers (`validateDoc`, the
+document ops, `splitSchemas`) are covered directly.
+
+The live-schema test is opt-in, so the suite stays offline:
+
+```bash
+RENDERC_V_LIVE_SCHEMA=1 npm test   # fetches the pinned schema and validates against it
+```
 
 ## Roadmap
 

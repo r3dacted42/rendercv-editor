@@ -2,25 +2,38 @@
  * Optional default theme for @r3dacted42/rendercv-form.
  *
  * The library ships the stock shadcn-vue components: class names only, with
- * colours, radius and typography read from the standard shadcn tokens. An app
- * that already defines those tokens (any shadcn-vue project) styles the form
- * natively and should NOT import this file.
+ * colours, radius and typography read from the standard shadcn tokens.
  *
- * Import it when the app has no shadcn-vue tokens of its own:
+ * This file is a stand-in for the CSS a shadcn-vue app already has, and stands
+ * in for *all* of it — the token values, the components' state variants
+ * (`data-open:`, `data-checked:`, …), shadcn's base-layer defaults
+ * (`* { border-color: … }`) and the animation utilities the components use.
+ * Import it when the app has none of those of its own:
  *
  *   @import "tailwindcss";
  *   @import "@r3dacted42/rendercv-form/theme.css";
  *
- * Everything here is a *fallback*, not a theme: the token values live in
+ * An app that already has them — a shadcn-vue project, i.e. one importing
+ * `shadcn-vue/tailwind.css`, `tw-animate-css` and shadcn's `@layer base`
+ * defaults — should NOT import this file: add the `@source` line instead (see
+ * the README). Importing it anyway is harmless, just redundant.
+ *
+ * Everything here is a *fallback*, not a theme. The token values live in
  * `@layer base`, the lowest-priority cascade layer, so anything the app declares
- * itself wins regardless of import order. Re-skin by setting your own `:root` /
- * `.dark` values (`--radius` is what sharpens or rounds the corners) — the
- * playground's `src/style.css` is a worked example of a host doing exactly that
- * with no help from this file.
+ * itself wins regardless of import order; the variants, base defaults and
+ * animation utilities match upstream, so having the real ones installed
+ * alongside changes nothing. Re-skin by setting your own `:root` / `.dark`
+ * values (`--radius` is what sharpens or rounds the corners) — the playground's
+ * `src/style.css` is a worked example of a host doing exactly that with no help
+ * from this file.
  *
  * `dark:` utilities are left alone: they follow Tailwind's default
  * (`prefers-color-scheme`) unless the app defines the usual
- * `@custom-variant dark (&:is(.dark *))` — shadcn-vue's `tailwind.css` does.
+ * `@custom-variant dark (&:is(.dark *))`. Both that variant and the `@layer base`
+ * defaults above belong to the app's own CSS — `shadcn-vue init` writes them, and
+ * shadcn-vue's `tailwind.css` does not. Define the variant if your app switches
+ * dark mode with a class; otherwise the `.dark` values below and the components'
+ * `dark:` utilities will disagree.
  */
 
 /*
@@ -28,6 +41,14 @@
  * A shadcn-vue app gets these from `shadcn-vue/tailwind.css`; they are repeated
  * here so this stylesheet is enough on its own. Definitions match upstream, so
  * importing both is harmless.
+ *
+ * They are needed by the *bare* form only: `data-open:` matches nothing without
+ * a definition, because reka-ui sets `data-state="open"` and never a bare
+ * `data-open` attribute. Tailwind emits such a rule for plain `data-*` anyway,
+ * so a missing bridge looks like working code that applies nothing. A few
+ * components write the bracketed `data-[state=open]:` form instead, which needs
+ * no bridge — which is why, without one, some interactive states work and some
+ * quietly don't.
  */
 @custom-variant data-open {
   &:where([data-state="open"]),
@@ -89,7 +110,175 @@
   }
 }
 
-/* Neutral shadcn defaults, used only where the host app defines nothing. */
+/*
+ * shadcn's base-layer defaults — `shadcn-vue init` writes exactly this. Some
+ * components use a bare `border` or `outline` utility and rely on these two
+ * declarations for its colour (e.g. `ButtonGroupText`, `FieldLabel`); without
+ * them those borders are painted in `currentColor` instead of `--border`.
+ */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+}
+
+/*
+ * Enter/exit animation utilities — the `tw-animate-css` family. shadcn-vue's own
+ * stylesheet does not ship them: the components' `animate-in`, `fade-in-0`,
+ * `zoom-in-95` and `slide-in-from-*-2` classes expect the app to have installed
+ * `tw-animate-css`, which is what `shadcn-vue init` does. They are repeated here
+ * so this stylesheet is enough on its own.
+ *
+ * Values and keyframes match upstream, so importing both is harmless in either
+ * order; keep the plugin installed if you use its wider set (`blur-in-*`,
+ * `slide-out-to-*`, `spin-in-*`, `delay-*`, …).
+ */
+@property --tw-animation-delay {
+  syntax: '*';
+  inherits: false;
+  initial-value: 0s;
+}
+@property --tw-animation-direction {
+  syntax: '*';
+  inherits: false;
+  initial-value: normal;
+}
+@property --tw-animation-duration {
+  syntax: '*';
+  inherits: false;
+}
+@property --tw-animation-fill-mode {
+  syntax: '*';
+  inherits: false;
+  initial-value: none;
+}
+@property --tw-animation-iteration-count {
+  syntax: '*';
+  inherits: false;
+  initial-value: 1;
+}
+@property --tw-enter-blur {
+  syntax: '*';
+  inherits: false;
+  initial-value: 0;
+}
+@property --tw-enter-opacity {
+  syntax: '*';
+  inherits: false;
+  initial-value: 1;
+}
+@property --tw-enter-rotate {
+  syntax: '*';
+  inherits: false;
+  initial-value: 0;
+}
+@property --tw-enter-scale {
+  syntax: '*';
+  inherits: false;
+  initial-value: 1;
+}
+@property --tw-enter-translate-x {
+  syntax: '*';
+  inherits: false;
+  initial-value: 0;
+}
+@property --tw-enter-translate-y {
+  syntax: '*';
+  inherits: false;
+  initial-value: 0;
+}
+@property --tw-exit-blur {
+  syntax: '*';
+  inherits: false;
+  initial-value: 0;
+}
+@property --tw-exit-opacity {
+  syntax: '*';
+  inherits: false;
+  initial-value: 1;
+}
+@property --tw-exit-rotate {
+  syntax: '*';
+  inherits: false;
+  initial-value: 0;
+}
+@property --tw-exit-scale {
+  syntax: '*';
+  inherits: false;
+  initial-value: 1;
+}
+@property --tw-exit-translate-x {
+  syntax: '*';
+  inherits: false;
+  initial-value: 0;
+}
+@property --tw-exit-translate-y {
+  syntax: '*';
+  inherits: false;
+  initial-value: 0;
+}
+
+@theme inline {
+  --animate-in: enter var(--tw-animation-duration, var(--tw-duration, 0.15s)) var(--tw-ease, ease)
+    var(--tw-animation-delay, 0s) var(--tw-animation-iteration-count, 1)
+    var(--tw-animation-direction, normal) var(--tw-animation-fill-mode, none);
+  --animate-out: exit var(--tw-animation-duration, var(--tw-duration, 0.15s)) var(--tw-ease, ease)
+    var(--tw-animation-delay, 0s) var(--tw-animation-iteration-count, 1)
+    var(--tw-animation-direction, normal) var(--tw-animation-fill-mode, none);
+
+  @keyframes enter {
+    from {
+      opacity: var(--tw-enter-opacity, 1);
+      transform: translate3d(var(--tw-enter-translate-x, 0), var(--tw-enter-translate-y, 0), 0)
+        scale3d(var(--tw-enter-scale, 1), var(--tw-enter-scale, 1), var(--tw-enter-scale, 1))
+        rotate(var(--tw-enter-rotate, 0));
+      filter: blur(var(--tw-enter-blur, 0));
+    }
+  }
+
+  @keyframes exit {
+    to {
+      opacity: var(--tw-exit-opacity, 1);
+      transform: translate3d(var(--tw-exit-translate-x, 0), var(--tw-exit-translate-y, 0), 0)
+        scale3d(var(--tw-exit-scale, 1), var(--tw-exit-scale, 1), var(--tw-exit-scale, 1))
+        rotate(var(--tw-exit-rotate, 0));
+      filter: blur(var(--tw-exit-blur, 0));
+    }
+  }
+}
+
+/* Only the values these components ask for; `tw-animate-css` has the full set. */
+@utility fade-in-0 {
+  --tw-enter-opacity: 0;
+}
+@utility fade-out-0 {
+  --tw-exit-opacity: 0;
+}
+@utility zoom-in-95 {
+  --tw-enter-scale: 0.95;
+}
+@utility zoom-out-95 {
+  --tw-exit-scale: 0.95;
+}
+@utility slide-in-from-top-2 {
+  --tw-enter-translate-y: calc(var(--spacing) * -2);
+}
+@utility slide-in-from-bottom-2 {
+  --tw-enter-translate-y: calc(var(--spacing) * 2);
+}
+@utility slide-in-from-left-2 {
+  --tw-enter-translate-x: calc(var(--spacing) * -2);
+}
+@utility slide-in-from-right-2 {
+  --tw-enter-translate-x: calc(var(--spacing) * 2);
+}
+
+/*
+ * A host that defines the tokens itself still needs the blocks above (variants,
+ * base defaults, animations), because those are not values but the glue a
+ * shadcn-vue setup provides. Only this last block is genuinely optional — and
+ * even then only when the host defines these tokens itself.
+ */
 @layer base {
   :root {
     --background: oklch(1 0 0);

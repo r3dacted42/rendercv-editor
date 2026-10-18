@@ -9,7 +9,7 @@ layout, toolbars, and import/export chrome to your app.
 
 ## Status
 
-`0.3.1` — early. The renderer, its shared form state (collapse / validation / disclosure), the
+`0.3.2` — early. The renderer, its shared form state (collapse / validation / disclosure), the
 document + YAML helpers, schema loading, optional theme defaults, and TypeScript declarations are
 all available. `0.2.0` added the server-side story: SSR-safe UI state, headless `validateDoc()` /
 `validateYaml()`, `$schemas`-aware document-editing primitives, and parser-free schema coordinates
@@ -17,7 +17,10 @@ all available. `0.2.0` added the server-side story: SSR-safe UI state, headless 
 `0.3.0` makes the form inherit the host's design system: the bundled primitives are now the stock
 shadcn-vue components (the default style) instead of a compact, square-cornered preset, and
 `theme.css` became a fallback that your own tokens always override. `0.3.1` fixes the container
-outline, which was drawn in the inherited text colour rather than `--border`.
+outline, which was drawn in the inherited text colour rather than `--border`. `0.3.2` makes
+`theme.css` a complete stand-in for a shadcn-vue app's CSS — it now also ships shadcn's base-layer
+defaults and the animation utilities the components use, so a host that supplies only tokens gets
+the same result as a shadcn-vue project.
 The [playground](https://github.com/r3dacted42/rendercv-editor) is the reference implementation.
 
 ## Requirements
@@ -26,7 +29,7 @@ The [playground](https://github.com/r3dacted42/rendercv-editor) is the reference
 - The parser-free surface (`validateDoc`, `validateYaml`, `splitSchemas`, `fetchSchemaText`, the
   document helpers) runs in plain Node — no DOM, no Vue — see [SSR](#server-side-rendering-ssr).
 - **Tailwind CSS v4** in the host app — the library ships class names, not CSS (see
-  [Styling](#styling)).
+  [Styling](#styling) for what the components expect alongside the tokens).
 - The library's own runtime dependencies (`reka-ui`, `@vueuse/core`, `@lucide/vue`, `yaml`,
   `clsx`, `tailwind-merge`, `class-variance-authority`) are installed automatically as regular
   dependencies — they are external, not bundled, so your app and the library share a single copy.
@@ -397,29 +400,55 @@ The library does not set fonts — it inherits the host app's typography.
 
 #### Theme defaults
 
-If your app doesn't already define these tokens, the mapping above ships as an optional
-stylesheet:
+Because the components are stock shadcn-vue components, they also assume three things a
+shadcn-vue setup installs next to the tokens. Each one fails quietly if it is missing, so it is
+worth checking them explicitly:
+
+| assumed | where a shadcn-vue app gets it | symptom when missing |
+| --- | --- | --- |
+| the state variants (`data-open:`, `data-checked:`, …) | `shadcn-vue/tailwind.css` | interactive states stop matching — see the note below |
+| the base-layer defaults: `* { border-color: var(--border) }` and `* { outline-color: … }` | the `@layer base` block `shadcn-vue init` writes | bare `border` / `outline` utilities (a few components use them) paint in the inherited text colour |
+| the enter/exit animation utilities (`animate-in`, `fade-in-0`, `zoom-in-95`, `slide-in-from-*-2`) | `tw-animate-css` | popovers, selects and dialogs open with no transition |
+
+If your app is a shadcn-vue project it already has all three — add the `@source` line above and
+stop there. If it defines its own tokens but none of the rest, `theme.css` supplies all three:
 
 ```css
 @import "tailwindcss";
 @import "@r3dacted42/rendercv-form/theme.css";
 ```
 
-Everything in it is a **fallback, never an override**: the token values live in `@layer base`, so
-an unlayered declaration of your own (`:root { --primary: … }`, the shadcn-vue convention) wins no
-matter which stylesheet is imported first. It also defines the `data-*` variants the components use
-(`data-open:`, `data-checked:`, …), which a shadcn-vue app gets from `shadcn-vue/tailwind.css`, so
-the file is enough on its own. It deliberately leaves `dark:` alone — those utilities follow
-Tailwind's default (`prefers-color-scheme`) unless your app defines the usual
-`@custom-variant dark (&:is(.dark *))`, as shadcn-vue does. If your app already has these tokens,
-don't import it — just add the `@source` line above.
+Everything in it is a **fallback, never an override**: the values live in `@layer base`, so an
+unlayered declaration of your own (`:root { --primary: … }`, the shadcn-vue convention) wins no
+matter which stylesheet is imported first. The variants, base defaults and animation utilities
+match upstream, so importing both this file and the real thing is harmless in either order; keep
+`tw-animate-css` installed if you use its wider set (`blur-in-*`, `slide-out-to-*`, `spin-in-*`,
+`delay-*`, …). It deliberately leaves `dark:` alone: those utilities follow Tailwind's default
+(`prefers-color-scheme`) unless your app defines the usual
+`@custom-variant dark (&:is(.dark *))` — which, like the base defaults in the table above, is part
+of the CSS `shadcn-vue init` writes in the app, not of `shadcn-vue/tailwind.css`. Define it if your
+app switches dark mode with a class, or the `.dark` token values will apply while the components'
+`dark:` utilities do not.
+
+> **Why the variants are the trap.** Most components use the bare form (`data-open:`), which
+> *needs* the bridge: `reka-ui` sets `data-state="open"` and never a bare `data-open` attribute,
+> while Tailwind emits a rule for `data-open:animate-in` either way. So without the bridge the rule
+> is present in your CSS and simply never matches — a stylesheet that looks correct and does
+> nothing. A few components (`TooltipContent`, `DialogScrollContent`) instead write
+> `data-[state=open]:`, which works without any bridge. That is why a partial set of interactive
+> states is the signature of a missing stylesheet rather than of per-component bugs.
+
+> **By design:** `SelectContent` carries `data-[align-trigger=true]:animate-none`, so the
+> item-aligned select skips its entrance animation while every other popover animates. The extra
+> specificity (`(0,2,0)` versus `(0,1,0)`) is deliberate, not a wiring bug.
 
 #### Density
 
 Control sizes are the components' own defaults (`h-9` inputs and selects, `h-8` small buttons,
 `text-sm` labels) — shadcn's sizes are utilities rather than tokens, so they follow the component
-preset instead of a variable. To make the form roomier or tighter, override the slots as you would
-for any shadcn component:
+preset instead of a variable, and there is deliberately no `--control-height` token to sit beside
+`--radius`. To make the form roomier or tighter, override the slots as you would for any shadcn
+component:
 
 ```css
 [data-slot="input"],

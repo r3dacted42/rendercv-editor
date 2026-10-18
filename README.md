@@ -21,8 +21,8 @@ reusable library and a demo app.
 │       │   ├── index.ts           # public API               → "."
 │       │   ├── ui.ts              # UI-primitive re-exports  → "./ui"
 │       │   ├── schema.ts          # schema loading           → "./schema"
-│       │   └── theme.css          # fallback token defaults  → "./theme.css"
-│       ├── scripts/               # build guards (declaration checks)
+│       │   └── theme.css          # fallback host CSS        → "./theme.css"
+│       ├── scripts/               # build guards (declaration + colour-utility checks)
 │       ├── tests/                 # Vitest suites (jsdom + Node/SSR) and the schema fixture
 │       ├── components.json        # shadcn-vue CLI config (development only)
 │       ├── tsconfig.build.json    # declaration emission

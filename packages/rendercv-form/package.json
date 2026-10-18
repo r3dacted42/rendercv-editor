@@ -1,6 +1,6 @@
 {
   "name": "@r3dacted42/rendercv-form",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Schema-driven Vue 3 form renderer for RenderCV YAML documents",
   "type": "module",
   "license": "MIT",
@@ -52,7 +52,7 @@
     "**/*.css"
   ],
   "scripts": {
-    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && vue-tsc -p tsconfig.build.json && vite build && node scripts/check-declarations.mjs",
+    "build": "node scripts/check-colour-utilities.mjs && node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && vue-tsc -p tsconfig.build.json && vite build && node scripts/check-declarations.mjs",
     "dev": "vite build --watch",
     "test": "vitest run",
     "test:watch": "vitest",

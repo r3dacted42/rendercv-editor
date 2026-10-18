@@ -132,6 +132,9 @@
   --font-sans: 'JetBrains Mono Variable', monospace;
 }
 
+/* What `shadcn-vue init` writes: the base-layer defaults the components' bare
+   `border`/`outline` utilities rely on for their colour. A host that does not
+   have them gets the same declarations from the library's optional theme.css. */
 @layer base {
   * {
     @apply border-border outline-ring/50;

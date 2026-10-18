@@ -129,9 +129,9 @@ const onClear = () => {
       </h1>
 
       <template v-if="cvSchema">
-        <ButtonGroup
+        <div
           class="w-full sticky top-0 z-10 p-2 flex flex-row flex-wrap items-center gap-2 justify-center bg-background/80 backdrop-blur-md transition-shadow"
-          :class="isScrolled && 'border-b shadow-sm'">
+          :class="isScrolled && 'border-b border-border shadow-sm'">
           <Dialog v-model:open="dialogOpen">
             <DialogTrigger as-child>
               <Button>
@@ -246,7 +246,7 @@ const onClear = () => {
               <TooltipContent>Expand all</TooltipContent>
             </Tooltip>
           </ButtonGroup>
-        </ButtonGroup>
+        </div>
 
         <FormRenderer :schema="cvSchema" v-model="stored.cv" root :core-fields="CORE_FIELDS.root" />
       </template>

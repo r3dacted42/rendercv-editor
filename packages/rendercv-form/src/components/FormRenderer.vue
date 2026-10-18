@@ -491,7 +491,7 @@ defineExpose({
 </script>
 
 <template>
-  <FieldSet :class="cn(isItem ? 'border-0 p-0 gap-2' : 'border p-2 gap-2', ui?.root)">
+  <FieldSet :class="cn(isItem ? 'border-0 p-0 gap-2' : 'border border-border rounded-md p-2 gap-2', ui?.root)">
     <!--
       reka-ui's tooltips require a `TooltipProvider` ancestor. Rendering one here
       (it renders no DOM of its own) keeps the renderer self-contained: no app

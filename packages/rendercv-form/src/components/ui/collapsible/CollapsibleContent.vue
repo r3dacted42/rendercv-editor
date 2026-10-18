@@ -1,25 +1,14 @@
 <script setup lang="ts">
 import type { CollapsibleContentProps } from 'reka-ui'
-import type { HTMLAttributes } from 'vue'
 import { CollapsibleContent } from 'reka-ui'
-import { reactiveOmit } from '@vueuse/core'
-import { cn } from '@/lib/utils'
 
-const props = defineProps<CollapsibleContentProps & { class?: HTMLAttributes['class'] }>()
-
-const delegatedProps = reactiveOmit(props, 'class')
+const props = defineProps<CollapsibleContentProps>()
 </script>
 
 <template>
   <CollapsibleContent
     data-slot="collapsible-content"
-    v-bind="delegatedProps"
-    :class="cn(
-      'overflow-hidden',
-      'data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up',
-      'motion-reduce:animate-none',
-      props.class,
-    )"
+    v-bind="props"
   >
     <slot />
   </CollapsibleContent>

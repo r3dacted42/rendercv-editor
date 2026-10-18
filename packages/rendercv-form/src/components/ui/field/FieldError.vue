@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { HTMLAttributes } from 'vue'
-import { computed } from 'vue'
 import { cn } from '@/lib/utils'
+import { computed } from 'vue'
 
 const props = defineProps<{
   class?: HTMLAttributes['class']
@@ -36,7 +36,7 @@ const content = computed(() => {
     v-if="$slots.default || content"
     role="alert"
     data-slot="field-error"
-    :class="cn('text-destructive text-xs font-normal', props.class)"
+    :class="cn('text-destructive text-sm font-normal', props.class)"
   >
     <slot v-if="$slots.default" />
 

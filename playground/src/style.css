@@ -1,6 +1,11 @@
 
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
+/* The playground is the library's reference *host*. Every style choice you see
+   here — near-zero radius, single-colour palette, JetBrains Mono — is this
+   file's doing. The library ships the stock shadcn-vue defaults and no theme of
+   its own, so in a consumer app it is the consumer's tokens that style the form. */
+
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn-vue/tailwind.css";
@@ -37,7 +42,7 @@
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.025rem;
+  --radius: 0.025rem; /* the playground's sharp corners; the library default is 0.625rem */
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);

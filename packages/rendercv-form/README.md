@@ -9,11 +9,14 @@ layout, toolbars, and import/export chrome to your app.
 
 ## Status
 
-`0.2.0` — early. The renderer, its shared form state (collapse / validation / disclosure), the
+`0.3.0` — early. The renderer, its shared form state (collapse / validation / disclosure), the
 document + YAML helpers, schema loading, optional theme defaults, and TypeScript declarations are
-all available. `0.2.0` adds the server-side story: SSR-safe UI state, headless `validateDoc()` /
+all available. `0.2.0` added the server-side story: SSR-safe UI state, headless `validateDoc()` /
 `validateYaml()`, `$schemas`-aware document-editing primitives, and parser-free schema coordinates
 (`SCHEMA_VERSION`, `DEFAULT_SCHEMA_URL`, `schemaUrl()`, `fetchSchemaText()`, `splitSchemas()`).
+`0.3.0` makes the form inherit the host's design system: the bundled primitives are now the stock
+shadcn-vue components (the default style) instead of a compact, square-cornered preset, and
+`theme.css` became a fallback that your own tokens always override.
 The [playground](https://github.com/r3dacted42/rendercv-editor) is the reference implementation.
 
 ## Requirements
@@ -378,13 +381,16 @@ utilities it uses are generated:
 @source "../node_modules/@r3dacted42/rendercv-form/dist";
 ```
 
-Colours, radius, and the rest come from CSS variables, so re-skinning is a matter of overriding
-them. The renderer expects the usual shadcn-style tokens: `--background`, `--foreground`,
-`--card(-foreground)`, `--popover(-foreground)`, `--primary(-foreground)`,
-`--secondary(-foreground)`, `--muted(-foreground)`, `--accent(-foreground)`,
-`--destructive(-foreground)`, `--border`, `--input`, `--ring`, and `--radius`, mapped into the
-Tailwind theme with `@theme inline { --color-primary: var(--primary); … }`. The playground's
-`src/style.css` is a copy-paste starting point.
+Its primitives are the **stock shadcn-vue components** (the default style), so the form inherits
+your design system instead of bringing its own: colours, radius and typography all come from the
+usual shadcn tokens — `--background`, `--foreground`, `--card(-foreground)`,
+`--popover(-foreground)`, `--primary(-foreground)`, `--secondary(-foreground)`,
+`--muted(-foreground)`, `--accent(-foreground)`, `--destructive(-foreground)`, `--border`,
+`--input`, `--ring`, and `--radius` — mapped into the Tailwind theme with
+`@theme inline { --color-primary: var(--primary); … }`. Square corners, a mono palette or a
+monospace face are host decisions: set `--radius` (e.g. `0`), the colour tokens and `--font-sans`
+and the whole form follows. The playground's `src/style.css` is the worked example — it re-skins the
+library's components into its sharp, single-colour, monospace look without the library knowing.
 
 The library does not set fonts — it inherits the host app's typography.
 
@@ -398,9 +404,30 @@ stylesheet:
 @import "@r3dacted42/rendercv-form/theme.css";
 ```
 
-It contains the neutral shadcn defaults for `:root` / `.dark` plus the `@theme inline` mapping. If
-your app already has these (any shadcn-vue project), don't import it — just add the `@source` line
-above.
+Everything in it is a **fallback, never an override**: the token values live in `@layer base`, so
+an unlayered declaration of your own (`:root { --primary: … }`, the shadcn-vue convention) wins no
+matter which stylesheet is imported first. It also defines the `data-*` variants the components use
+(`data-open:`, `data-checked:`, …), which a shadcn-vue app gets from `shadcn-vue/tailwind.css`, so
+the file is enough on its own. It deliberately leaves `dark:` alone — those utilities follow
+Tailwind's default (`prefers-color-scheme`) unless your app defines the usual
+`@custom-variant dark (&:is(.dark *))`, as shadcn-vue does. If your app already has these tokens,
+don't import it — just add the `@source` line above.
+
+#### Density
+
+Control sizes are the components' own defaults (`h-9` inputs and selects, `h-8` small buttons,
+`text-sm` labels) — shadcn's sizes are utilities rather than tokens, so they follow the component
+preset instead of a variable. To make the form roomier or tighter, override the slots as you would
+for any shadcn component:
+
+```css
+[data-slot="input"],
+[data-slot="textarea"],
+[data-slot="select-trigger"],
+[data-slot="input-group"] {
+  height: 2.75rem;
+}
+```
 
 ### Optional UI primitives
 

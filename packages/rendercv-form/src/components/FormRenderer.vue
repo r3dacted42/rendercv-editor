@@ -567,7 +567,7 @@ defineExpose({
 
                   <Popover>
                     <PopoverTrigger as-child>
-                      <Button>
+                      <Button variant="outline" class="max-w-fit self-start">
                         <PlusIcon />
                         Add {{ removeTrailingS(getPropTitle(prop, key)) }}
                       </Button>
@@ -640,7 +640,8 @@ defineExpose({
 
                         <Tooltip>
                           <TooltipTrigger as-child>
-                            <Button @click="() => addArrayItem(prop, key)">
+                            <Button variant="outline" class="max-w-fit self-start"
+                              @click="() => addArrayItem(prop, key)">
                               <PlusIcon />
                               Add {{ removeTrailingS(getPropTitle(prop, key)) }}
                             </Button>
@@ -672,7 +673,8 @@ defineExpose({
 
                     <Tooltip>
                       <TooltipTrigger as-child>
-                        <Button @click="() => addArrayItem(prop, key)">
+                        <Button variant="outline" class="max-w-fit self-start"
+                          @click="() => addArrayItem(prop, key)">
                           <PlusIcon />
                           Add {{ removeTrailingS(getPropTitle(prop, key)) }}
                         </Button>
@@ -806,7 +808,8 @@ defineExpose({
                 :title="removeTrailingS(getPropTitle({}, userDefKey || 'entry'))" />
             </template>
 
-            <Button @click="data.push((currentSchema.items as any).type === 'object' ? {} : '')">
+            <Button variant="outline" class="max-w-fit self-start"
+              @click="data.push((currentSchema.items as any).type === 'object' ? {} : '')">
               <PlusIcon />
               Add {{ removeTrailingS(getPropTitle({}, userDefKey || "entry")) }}
             </Button>

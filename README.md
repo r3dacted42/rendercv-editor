@@ -15,13 +15,13 @@ reusable library and a demo app.
 ├── packages/
 │   └── rendercv-form/             # the published library
 │       ├── src/
-│       │   ├── components/        # FormRenderer, ConfirmDialog, shadcn-vue UI kit
+│       │   ├── components/        # FormRenderer, ConfirmDialog, stock shadcn-vue UI kit
 │       │   ├── composables/       # collapse / validation / visibility / form state, persistence
 │       │   ├── lib/               # YAML + document ops, headless validation, schema metadata, policy
 │       │   ├── index.ts           # public API               → "."
 │       │   ├── ui.ts              # UI-primitive re-exports  → "./ui"
 │       │   ├── schema.ts          # schema loading           → "./schema"
-│       │   └── theme.css          # optional token defaults  → "./theme.css"
+│       │   └── theme.css          # fallback token defaults  → "./theme.css"
 │       ├── scripts/               # build guards (declaration checks)
 │       ├── tests/                 # Vitest suites (jsdom + Node/SSR) and the schema fixture
 │       ├── components.json        # shadcn-vue CLI config (development only)

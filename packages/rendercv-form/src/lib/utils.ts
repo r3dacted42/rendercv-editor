@@ -37,7 +37,6 @@ export function matchSchema(obj: any, sectionsSchema: any) {
 
 export function cleanData(data: any): any {
   if (Array.isArray(data)) {
-    // Clean children, then filter out the empty primitives
     const arr = data
       .map(cleanData)
       .filter((v) => v !== undefined && v !== null && v !== "");

@@ -61,7 +61,6 @@ export function createFieldVisibility(options: FieldVisibilityOptions = {}): Fie
     persist,
     hydrate,
     empty: emptyState,
-    // Guard against stale or incompatible values from earlier versions.
     validate: isState,
   });
 

@@ -120,8 +120,7 @@ const currentSchema = computed<any>(() => selectedVariant.value?.schema ?? schem
 
 /* Basic schema helpers --------------------------------------------------- */
 
-const getPropTitle = (prop: any, key: string) => prop.title as string ||
-  key.split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
+const getPropTitle = (prop: any, key: string) => (prop.title as string) || toTitleCase(key.replace(/_/g, ' '));
 
 const hasType = (prop: any, type: string) => prop.anyOf && Array.isArray(prop.anyOf)
   && (prop.anyOf as Array<any>).reduce((acc, d) => acc || d.type === type, false);
@@ -259,9 +258,8 @@ const open = computed({
 
 /** Collapse state for an array-level group (single heading for all items). */
 const collapseStore = form.collapsible;
-const groupKey = (key: string) => `${path}.${key}`;
-const groupOpen = (key: string) => collapseStore.isOpen(groupKey(key));
-const setGroupOpen = (key: string, open: boolean) => collapseStore.setOpen(groupKey(key), open);
+const groupOpen = (key: string) => collapseStore.isOpen(groupPath(key));
+const setGroupOpen = (key: string, open: boolean) => collapseStore.setOpen(groupPath(key), open);
 
 /** Items are always expanded — their group owns the collapse behaviour. */
 const onOpenChange = (value: boolean) => {

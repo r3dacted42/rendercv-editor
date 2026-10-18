@@ -9,7 +9,7 @@ layout, toolbars, and import/export chrome to your app.
 
 ## Status
 
-`0.3.2` — early. The renderer, its shared form state (collapse / validation / disclosure), the
+`0.3.3` — early. The renderer, its shared form state (collapse / validation / disclosure), the
 document + YAML helpers, schema loading, optional theme defaults, and TypeScript declarations are
 all available. `0.2.0` added the server-side story: SSR-safe UI state, headless `validateDoc()` /
 `validateYaml()`, `$schemas`-aware document-editing primitives, and parser-free schema coordinates
@@ -20,8 +20,10 @@ shadcn-vue components (the default style) instead of a compact, square-cornered 
 outline, which was drawn in the inherited text colour rather than `--border`. `0.3.2` makes
 `theme.css` a complete stand-in for a shadcn-vue app's CSS — it now also ships shadcn's base-layer
 defaults and the animation utilities the components use, so a host that supplies only tokens gets
-the same result as a shadcn-vue project.
-The [playground](https://github.com/r3dacted42/rendercv-editor) is the reference implementation.
+the same result as a shadcn-vue project. `0.3.3` is a docs-and-tests release with no API change:
+the examples in this README were corrected to match the shipped signatures, and the Vitest suite
+gained coverage for the renderer's DOM behaviour and the field-policy and field-hint helpers.
+The [playground](https://r3dacted42.github.io/rendercv-editor) is the reference implementation.
 
 ## Requirements
 
@@ -139,6 +141,12 @@ if (await renderer.value.validate()) { /* safe to export */ }
 const cleaned = renderer.value.output;
 ```
 
+### `<ConfirmDialog>`
+
+A small confirmation dialog used for destructive actions (clearing a field, switching a union
+variant). Accepts `title`, `description`, `confirmLabel`, `cancelLabel`, `v-model:open`, emits
+`confirm`, and renders its trigger through the `#trigger` slot.
+
 ## Form state & persistence
 
 Collapse, validation, and optional-field disclosure are shared through provide/inject. A lone
@@ -236,8 +244,10 @@ dedicated validator such as Ajv if you need them. Pass **dereferenced** schemas,
 
 ## Editing a document programmatically
 
-The renderer edits its `v-model` object in place, and so can you. Every helper mutates `root` and
-returns it, so calls compose:
+The renderer edits its `v-model` object in place, and so can you. Every helper that changes the
+document mutates `root` in place; `setAtPath()`, `insertAtPath()`, `moveAtPath()` and
+`reorderAtPath()` also return it, so calls compose, while `removeAtPath()` returns whether it
+removed anything:
 
 ```ts
 import { getAtPath, insertAtPath, moveAtPath, removeAtPath, reorderAtPath, setAtPath } from '@r3dacted42/rendercv-form';
@@ -246,7 +256,7 @@ const path = ['cv', 'sections', 'experience'] as const;
 
 getAtPath(doc, [...path, 0, 'company']);      // read
 setAtPath(doc, [...path, 0, 'position'], 'Staff Engineer'); // write (creates missing containers)
-insertAtPath(doc, path, 0, { company: 'Acme' });            // insert at an index (clamped)
+insertAtPath(doc, [...path, 0], { company: 'Acme' });       // insert at an index (clamped)
 moveAtPath(doc, path, 0, 2);                                // drag-and-drop reorder
 reorderAtPath(doc, path, [2, 0, 1]);                        // any permutation
 removeAtPath(doc, [...path, 1]);                            // delete a key or splice an index
@@ -261,19 +271,13 @@ drift out of sync:
 import { addSection, removeSection, renameSection, sectionMarkers } from '@r3dacted42/rendercv-form';
 
 const sections = doc.cv.sections ?? (doc.cv.sections = {});
-addSection(sections, 'projects', schemas.cv.properties.sections.anyOf[1].additionalProperties.anyOf[0]);
+addSection(sections, 'projects', schemas.cv.properties.sections.anyOf[0].additionalProperties.anyOf[0]);
 removeSection(sections, 'projects');           // drops the key *and* its marker
 renameSection(sections, 'projects', 'side-projects'); // moves the key and its marker
 ```
 
 `removeAtPath()` already drops a section's marker when it removes the key, so plain path edits are
 marker-correct too. Markers are never part of the exported YAML (`buildDoc` strips them).
-
-### `<ConfirmDialog>`
-
-A small confirmation dialog used for destructive actions (clearing a field, switching a union
-variant). Accepts `title`, `description`, `confirmLabel`, `cancelLabel`, `v-model:open`, emits
-`confirm`, and renders its trigger through the `#trigger` slot.
 
 ## Schema loading
 
@@ -337,8 +341,8 @@ whatever tool you prefer.
   revealed, and the chosen mode of an exclusive group.
 
 The `provide*` functions must run inside a component `setup`. Each store module also exports an
-`inject*` variant (returns `undefined` instead of throwing) and a `create*` variant (builds a store
-without providing it).
+`inject*` variant (returns `undefined` instead of throwing); the collapse and disclosure modules add
+a `create*` variant (builds a store without providing it).
 
 Both persistence stores take `{ storageKey, persist, hydrate }` (see
 [SSR](#server-side-rendering-ssr)). Note that provide/inject is *ancestor* based: to read a store

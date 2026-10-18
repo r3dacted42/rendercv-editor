@@ -195,3 +195,12 @@ describe('validateYaml', () => {
     expect(errors[0]!.path).toEqual([]);
   });
 });
+
+describe('README schema examples', () => {
+  // The section-map snippet in the README indexes into the real schema; keep it honest.
+  it('resolves the indexed section schema', () => {
+    const sectionSchema = (cv.properties as any).sections.anyOf[0].additionalProperties.anyOf[0];
+    expect(sectionSchema).toMatchObject({ type: 'array' });
+    expect(sectionSchema.items).toBeDefined();
+  });
+});

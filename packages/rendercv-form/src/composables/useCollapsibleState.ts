@@ -52,7 +52,6 @@ export function createCollapsibleState(options: CollapsibleStateOptions = {}): C
     persist,
     hydrate,
     empty: emptyState,
-    // Guard against stale or incompatible values from earlier versions.
     validate: isState,
   })
 

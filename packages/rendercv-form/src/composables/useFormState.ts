@@ -97,7 +97,6 @@ export function useOrProvideFormState(options: FormStateOptions = {}): FormState
 
   const storageKey = options.storageKey ?? 'rendercv'
   const hydrate = options.hydrate ?? 'immediate'
-  // Reuse whatever an ancestor already provided, creating only what is missing.
   const collapsible = injectCollapsibleState()
     ?? provideCollapsibleState({ storageKey: `${storageKey}-collapse-state`, persist: options.persist, hydrate })
   const validation = injectValidationState() ?? provideValidationState()

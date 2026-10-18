@@ -9,14 +9,15 @@ layout, toolbars, and import/export chrome to your app.
 
 ## Status
 
-`0.3.0` — early. The renderer, its shared form state (collapse / validation / disclosure), the
+`0.3.1` — early. The renderer, its shared form state (collapse / validation / disclosure), the
 document + YAML helpers, schema loading, optional theme defaults, and TypeScript declarations are
 all available. `0.2.0` added the server-side story: SSR-safe UI state, headless `validateDoc()` /
 `validateYaml()`, `$schemas`-aware document-editing primitives, and parser-free schema coordinates
 (`SCHEMA_VERSION`, `DEFAULT_SCHEMA_URL`, `schemaUrl()`, `fetchSchemaText()`, `splitSchemas()`).
 `0.3.0` makes the form inherit the host's design system: the bundled primitives are now the stock
 shadcn-vue components (the default style) instead of a compact, square-cornered preset, and
-`theme.css` became a fallback that your own tokens always override.
+`theme.css` became a fallback that your own tokens always override. `0.3.1` fixes the container
+outline, which was drawn in the inherited text colour rather than `--border`.
 The [playground](https://github.com/r3dacted42/rendercv-editor) is the reference implementation.
 
 ## Requirements
